@@ -26,7 +26,12 @@ git clone https://github.com/hanuele/hive.git /tmp/hive
 /tmp/hive/scripts/bootstrap.sh --target /path/to/your/project
 
 # Option B: Manual copy
-cp -r /tmp/hive/.claude/hive/ /path/to/your/project/.claude/hive/
+mkdir -p /path/to/your/project/.claude/hive
+cp -r /tmp/hive/personas /tmp/hive/squads /tmp/hive/constitutions \
+      /tmp/hive/protocols /tmp/hive/terrain /tmp/hive/differentiation \
+      /tmp/hive/memory /tmp/hive/_verification /tmp/hive/GLOSSARY.md \
+      /tmp/hive/integration-guide.md /tmp/hive/DOMAIN-INJECTION.md \
+      /path/to/your/project/.claude/hive/
 
 # Commit the hive to your project
 cd /path/to/your/project
@@ -36,7 +41,7 @@ git commit -m "feat: add Hive multi-agent framework"
 
 ## 3. What to Customize
 
-Open `DOMAIN-INJECTION.md` in the Hive repo. It lists **2 required** and **3 optional** customizations.
+Open `DOMAIN-INJECTION.md` in the Hive repo. It lists **2 required** and **4 optional** customizations.
 
 At minimum, replace:
 - `{PROJECT_TEST_COMMAND}` — your project's test runner (e.g., `npm test`, `pytest`, `cargo test`)

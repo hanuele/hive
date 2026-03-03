@@ -200,7 +200,6 @@ hive/
 │       └── projections/         #   Status summaries and activity tracking
 │
 ├── _verification/               # Self-diagnostic test scenarios
-├── constitutions/PROPAGATION.md # How learnings propagate
 ├── GLOSSARY.md                  # Terminology reference
 ├── integration-guide.md         # How to integrate the Hive into your project
 ├── ONBOARDING.md                # First-time user walkthrough

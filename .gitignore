@@ -1,0 +1,28 @@
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor configs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Mission runtime artifacts (generated during missions, not committed)
+memory/active/blackboard/*.md
+!memory/active/blackboard/_template.md
+memory/active/traces/*.trace
+memory/active/manifests/*.json
+memory/archive/events.jsonl
+memory/archive/blackboard/*.md
+memory/archive/traces/**/*.trace
+memory/archive/retrospectives/*.md
+!memory/archive/retrospectives/_template.md
+!memory/archive/retrospectives/example-research-retro.md
+memory/archive/projections/status-summary.md
+!memory/archive/projections/agent-activity.md
+
+# Logs
+*.log

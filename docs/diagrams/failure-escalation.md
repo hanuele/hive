@@ -14,9 +14,7 @@ flowchart TD
     L2[L2: Peer Consult\nStructured debate between agents\n2 rounds max, evidence required]
     L2 --> D2{Resolved?}
     D2 -- Yes --> DONE
-    D2 -- No --> D2B{MINOR\ndisagreement?}
-    D2B -- Yes --> L3
-    D2B -- No,\nSIGNIFICANT --> L3
+    D2 -- No --> L3
 
     L3[L3: Orchestrator Review\nReviews both positions and evidence\nMay reframe or request more data]
     L3 --> D3{Resolved?}

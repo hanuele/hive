@@ -29,6 +29,10 @@ sequenceDiagram
     V->>BB: Write trace: verification_complete\n{ts, mission, agent, action, detail}
     Note over V: Verifier phase complete
 
-    BB-->>D: Orchestrator reads all traces\nand blackboard for synthesis
+    Note over BB,V: ── Mission work complete ──
+
+    participant O as Orchestrator
+    BB-->>O: Orchestrator reads all traces\nand blackboard for synthesis
+    O->>BB: Write synthesis to blackboard
     Note over BB: All traces archived to\nmemory/archive/traces/{mission}/\nafter mission complete
 ```
