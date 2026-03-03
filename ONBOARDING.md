@@ -274,17 +274,32 @@ The agent didn't follow BLUF format. This is a prompt issue.
 
 **Fix:** Include the full persona narrative in the spawn prompt (not just "you are The Investigator"). The narrative provides the reasoning context that produces structured behavior.
 
-## 7. Going Deeper
+## 7. Learning Path
+
+Read these files in order. Each builds on the previous:
+
+| # | File | What you learn | Time |
+|---|------|---------------|------|
+| 1 | `constitutions/universal.md` | The Thirteen Principles — the "why" behind everything | 5 min |
+| 2 | `terrain/analysis-axes.md` | How to assess whether a task needs a squad | 3 min |
+| 3 | `protocols/commanders-intent.md` | How to frame a mission (the most important skill) | 5 min |
+| 4 | `protocols/bluf-format.md` | How agents communicate findings | 2 min |
+| 5 | `docs/example-mission/blackboard.md` | A complete mission — see all the pieces working together | 10 min |
+
+After these 5 files (~25 minutes), you'll understand the core loop. Everything else is refinement.
+
+## 8. Going Deeper
 
 Once your first mission succeeds, explore:
 
 | Topic | Where to Look |
 |-------|--------------|
-| **Terrain analysis** | `terrain/analysis-axes.md` — how to assess missions along 4 axes |
+| **Worked example** | `docs/example-mission/` — complete blackboard, retrospective, and trace examples |
 | **Squad selection** | `terrain/composition-rules.md` — which squad type for which terrain |
 | **Engineering Squad** | `squads/engineering-squad.md` — build/modify code with known requirements |
 | **Review Squad** | `squads/review-squad.md` — independent quality assessment with blind protocol |
-| **Protocols** | `protocols/` — communication standards, synthesis, failure handling |
+| **All protocols** | `protocols/` — communication standards, synthesis, failure handling |
 | **Constitutions** | `constitutions/` — governance principles, quorum rules, Stop Signals |
 | **Knowledge Crystallization** | `protocols/crystallization.md` — how the system learns across missions |
 | **Example retrospective** | `memory/archive/retrospectives/example-research-retro.md` |
+| **Contributing** | `CONTRIBUTING.md` — how to share your mission results and improve the framework |

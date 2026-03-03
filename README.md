@@ -6,6 +6,16 @@ A reusable, composable multi-agent team system built on [Claude Code](https://do
 
 ---
 
+## The Three Jewels
+
+| Jewel | Meaning |
+|-------|---------|
+| **The Purpose** (clear seeing) | The Hive exists to surface what would otherwise remain hidden. Every action serves this purpose or is unnecessary. |
+| **The Protocols** (right understanding) | The Thirteen Principles, the Stop Signal, the Quorum, the Crystallization Spiral — not rules to be obeyed but practices to be embodied. They work when understood, not merely followed. |
+| **The Team** (community of practice) | No agent is sufficient alone. The team's diversity is its strength. Caring for the team is as important as completing the task. |
+
+---
+
 ## The Origin Story
 
 ### Act 1: The Question
@@ -81,16 +91,6 @@ The system learned. The Crystallization Spiral turned mission observations into 
 
 ---
 
-## The Three Jewels
-
-| Jewel | Meaning |
-|-------|---------|
-| **The Purpose** (clear seeing) | The Hive exists to surface what would otherwise remain hidden. Every action serves this purpose or is unnecessary. |
-| **The Protocols** (right understanding) | The Thirteen Principles, the Stop Signal, the Quorum, the Crystallization Spiral — not rules to be obeyed but practices to be embodied. They work when understood, not merely followed. |
-| **The Team** (community of practice) | No agent is sufficient alone. The team's diversity is its strength. Caring for the team is as important as completing the task. |
-
----
-
 ## Quick Start
 
 ### Path 1: Bootstrap (Recommended)
@@ -112,6 +112,27 @@ Then fill in the placeholders listed in `bootstrap/DOMAIN-INJECTION-CHECKLIST.md
 5. **Customize** — fill in `{PLACEHOLDER}` values per `DOMAIN-INJECTION.md`
 6. **Assess terrain** — before your first mission, run `/assess-terrain` on your ticket
 7. **Launch** — follow `ONBOARDING.md` for your first squad
+
+### See It in Action
+
+Before running your first mission, study the **[worked example](docs/example-mission/)** — a complete Research Squad mission with filled-in blackboard, findings from two investigators, synthesis, and retrospective.
+
+---
+
+## What It Costs
+
+Token usage varies by squad size and mission complexity. These are rough estimates from real missions:
+
+| Squad | Agents | Approximate Tokens | Notes |
+|-------|--------|--------------------|-------|
+| Research (3) | orchestrator + 2 investigators | 150–300K | Mostly reads + blackboard writes |
+| Engineering Focused (3) | designer + implementer + verifier | 200–400K | Code generation increases output tokens |
+| Engineering Full (4) | + reviewer | 300–500K | Adds a full review pass |
+| Review (2) | correctness + security | 100–250K | Focused reads, structured output |
+
+**Cost drivers:** File reads (large codebases = more input tokens), code generation (engineering squads), number of rounds (time-boxed missions are cheaper). The biggest cost is *not* the agents — it's re-reading large files across multiple agents. Keep blackboards concise and scope missions tightly.
+
+**Is it worth it?** A 3-agent research squad that finds a risk a solo agent would miss costs less than the rework from missing it. The question isn't "how much does the squad cost" but "how much does the wrong answer cost."
 
 ---
 
@@ -204,6 +225,8 @@ hive/
 ├── integration-guide.md         # How to integrate the Hive into your project
 ├── ONBOARDING.md                # First-time user walkthrough
 ├── DOMAIN-INJECTION.md          # Customization guide
+├── CONTRIBUTING.md              # How to contribute
+├── LICENSE                      # MIT License
 │
 ├── bootstrap/                   # Integration files for new projects
 │   ├── CLAUDE-SNIPPET.md        #   Ready-to-paste CLAUDE.md additions
@@ -215,6 +238,7 @@ hive/
 │   └── bootstrap.sh             #   One-command integration script
 │
 └── docs/
+    ├── example-mission/         #   Complete worked example (blackboard + retro)
     ├── origin/                  #   The complete origin story
     │   ├── v1-foundation.md     #     Research phase
     │   ├── v2-roundtable.md     #     First expert review
