@@ -3,6 +3,18 @@
 > **Mission type:** Deep investigation and knowledge synthesis
 > **When:** High uncertainty — the team needs to learn before it can act
 
+## Upfront Parallelization
+
+Before spawning agents, Orchestrator (Facilitator) should assess task volume:
+
+> "For research missions with >4 independent investigation threads, consider
+> spawning 2 Investigators from the start. See `protocols/dynamic-scaling.md §Upfront`."
+
+Independent threads = investigation domains that do not rely on each other's
+findings to proceed (e.g., regulatory analysis vs. financial data).
+
+---
+
 ## Composition
 
 **Size:** 3-4 agents
@@ -62,6 +74,17 @@ See `constitutions/commitment-threshold.md` for quorum rules.
 If two rounds of structured debate produce no convergence, the Facilitator does not add a third round. The Facilitator either:
 - **(a)** Reframes the question to find a solution space neither position occupies, or
 - **(b)** Escalates per escalation-rules.md (Tier 3a if reversible, Tier 3b if irreversible) with both positions documented in SBAR format
+
+## Productive Waiting
+
+> "If all your phase-specific tasks are either in progress by others or not
+> yet unblocked, do preparatory work within your role boundary: read the
+> blackboard Findings, review the Commander's Intent constraints, or
+> pre-load context for your upcoming phase. Do not sit truly idle — context
+> spent reading now reduces time needed when your phase starts."
+
+**Exception:** During the fan-out phase, Investigators must NOT read peer
+findings — that constraint overrides the productive waiting guideline.
 
 ## Deep Dive Option
 

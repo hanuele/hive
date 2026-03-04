@@ -126,3 +126,18 @@ The `/hive` skill also warns about active missions before launching new ones.
 - Documentation-only changes
 - Version bumps, config changes
 - Tasks where coordination overhead > diversity value
+
+## Mid-Mission Scaling
+
+Squads can grow horizontally when context pressure or task backlog demands it.
+See `protocols/dynamic-scaling.md` for the full protocol.
+
+**Two mechanisms:**
+1. **Upfront** — Orchestrator evaluates task count at kickoff; if >5 tasks with
+   2+ independent tracks, starts with 2 workers from the beginning.
+2. **Mid-mission** — Scrum Master monitors budget zones; if any agent hits YELLOW
+   or one agent owns >5 pending tasks, files a `## Scale Requests` entry.
+   Orchestrator spawns a clone that claims unclaimed tasks in ID order.
+
+**Autonomy cap:** Up to 3 agents of the same role are spawned autonomously.
+The 4th requires human confirmation.

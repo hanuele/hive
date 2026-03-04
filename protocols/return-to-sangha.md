@@ -5,7 +5,7 @@
 
 ## Philosophy
 
-Claude Code auto-compacts conversations at ~83.5% of the 200K token context window.
+AI models auto-compact conversations when they approach context window limits.
 This is a blunt summarization that loses nuance — decisions, reasoning chains, and
 partial findings vanish. The Hive and solo sessions both suffer.
 
@@ -31,7 +31,7 @@ timer, not on a schedule, but when something worth preserving happens.
 | Event | Example |
 |-------|---------|
 | Decision made | "Chose approach A over B because..." |
-| Key finding | "Alpha Vantage covers 45/60 fields" |
+| Key finding | "Source X covers 45/60 fields" |
 | Phase transition | "Research complete, entering synthesis" |
 | Hypothesis change | "Revised working hypothesis from X to Y" |
 | Risk identified | "Migration may break backward compatibility" |
@@ -58,7 +58,7 @@ Add to the session log's body:
 ## Relay Baton
 
 ### Mission Context
-- Ticket: KAN-XXX
+- Ticket: {ISSUE-XXX}
 - Branch: feature/xxx
 - Objective: {one sentence}
 
@@ -99,9 +99,17 @@ Add to the session log's body:
 
 ## Component 2: Budget Tracker
 
-A bash script (`scripts/context-budget.sh`) that tracks turn count and cumulative
-file sizes read. Returns approximate zone indicators. Not precise — there is no API
-for exact context usage — but provides useful time pressure signals.
+A heuristic tool that tracks turn count and cumulative file sizes read. Returns
+approximate zone indicators. Not precise — there is no API for exact context usage
+— but provides useful time pressure signals.
+
+```
+# {TOOL: initialize context budget tracker for <agent-id> with profile solo|subagent|orchestrator}
+# {TOOL: tick context budget tracker for <agent-id> with files-read <bytes>}
+# {TOOL: check context budget zone for <agent-id>}
+# {TOOL: render context budget status for <agent-id>}
+# {TOOL: reset context budget tracker for <agent-id>}
+```
 
 ### Zones
 
@@ -114,26 +122,6 @@ for exact context usage — but provides useful time pressure signals.
 
 Zone = MAX(turn-based zone, file-size-based zone). Thresholds are conservative
 approximations, calibrated over time via crystallization protocol.
-
-### Usage
-
-```bash
-# Initialize
-bash scripts/context-budget.sh init <agent-id> --profile solo|subagent|orchestrator
-
-# After each major operation
-bash scripts/context-budget.sh tick <agent-id> --files-read <bytes>
-
-# Check current zone
-bash scripts/context-budget.sh check <agent-id>
-
-# Visual status
-bash scripts/context-budget.sh render <agent-id>
-bash scripts/context-budget.sh render-all
-
-# Cleanup
-bash scripts/context-budget.sh reset <agent-id>
-```
 
 ### Zone behaviors
 
@@ -167,7 +155,7 @@ Location: `memory/active/{mission}-state.json`
 
 ```json
 {
-  "mission": "kan-xxx-feature",
+  "mission": "mission-name",
   "state": "active",
   "phases": [
     {
@@ -186,7 +174,7 @@ Location: `memory/active/{mission}-state.json`
       ]
     }
   ],
-  "updated": "2026-03-03T14:30:00Z"
+  "updated": "2026-01-01T14:30:00Z"
 }
 ```
 
@@ -214,7 +202,7 @@ section under `### State Machine`. Format:
 ### State Machine
 | Level | Name | State |
 |-------|------|-------|
-| Mission | kan-xxx | active |
+| Mission | mission-name | active |
 | Phase | research | complete |
 |   Agent | investigator-alpha | terminated |
 |   Agent | investigator-beta | terminated |
@@ -237,8 +225,7 @@ could resume from it.
 When budget tracker signals YELLOW (~60-75% estimated):
 1. Announce to user
 2. Increase checkpoint frequency
-3. If continuing past YELLOW, run `/compact focus on [current task context]`
-   with state already safely on disk
+3. If continuing past YELLOW, run a focused compact with state already safely on disk
 
 ### Layer 3 — Baton Restart (RED zone)
 
@@ -305,10 +292,10 @@ Every spawn prompt includes a `## CRITICAL: Context Budget` section:
 ## CRITICAL: Context Budget
 
 Initialize the budget tracker at session start:
-  bash scripts/context-budget.sh init {agent-id} --profile subagent
+  # {TOOL: initialize context budget tracker for {agent-id} with profile subagent}
 
 After each major operation (file read, web fetch, multi-step analysis):
-  bash scripts/context-budget.sh tick {agent-id} --files-read {bytes}
+  # {TOOL: tick context budget tracker for {agent-id}}
 
 At YELLOW: checkpoint immediately, increase write frequency.
 At RED: write final findings to blackboard, signal relay readiness to team lead.
@@ -335,13 +322,13 @@ Events logged to `events.jsonl` (see `memory/event-schema.md`):
 
 ## Resume Procedure
 
-When starting a fresh session and discovering stale missions in `active/blackboard/`:
+When starting a fresh session and discovering stale missions in `memory/active/blackboard/`:
 
 ### Automated path (recommended)
 
-Run `/hive-resume`. The skill will:
+Use your team's mission-resume skill or command. It should:
 1. Scan all non-template blackboards
-2. Cross-reference hive-status.md, retrospectives, and state files
+2. Cross-reference status files, retrospectives, and state files
 3. Classify each as CLEANUP_ONLY / COMPLETE_NEEDS_CLEANUP / INCOMPLETE
 4. Archive completed missions automatically
 5. Offer to re-spawn squads for incomplete missions with RESUMPTION CONTEXT
@@ -362,7 +349,7 @@ Agents receive a short RESUMPTION CONTEXT section in their spawn prompt telling 
 - To NOT repeat completed work
 - To start from the baton's "Next Steps"
 
-The blackboard itself carries the full state -- agents read it, rather than receiving it via prompt. This saves context budget.
+The blackboard itself carries the full state — agents read it, rather than receiving it via prompt. This saves context budget.
 
 ## Anti-Patterns
 
@@ -407,4 +394,3 @@ Budget thresholds are conservative initial estimates. Calibrate via crystallizat
 | `crystallization.md` | Budget thresholds are calibrated via crystallization across missions |
 | `mission-cleanup.md` | State and budget files archived after mission completion |
 | `agent-shutdown.md` | Relay sequence includes shutdown; baton must be written before shutdown_request |
-| `context-preservation.md` | Return to Sangha extends the original context preservation rules |

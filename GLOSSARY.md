@@ -21,6 +21,11 @@
 | **BLUF** | Bottom Line Up Front — finding format with conclusion first |
 | **Breathing Space** | Pause between fan-out and synthesis for full-picture reading |
 | **Quorum Sensing** | Convergence threshold: 2+ independent agents confirming a finding |
+| **Return to Sangha** | Context renewal protocol: proactive disk writes (Living Baton), budget zone tracking, and hierarchical state machine to survive context compaction |
+| **Budget Zone** | Context pressure indicator with 4 levels: GREEN (normal), YELLOW (high pressure, checkpoint), RED (relay readiness), CRITICAL (stop new work) |
+| **Scale Request** | Structured blackboard entry proposing horizontal scaling; filed by Scrum Master, acted on by Orchestrator |
+| **Dynamic Scaling** | Two-mechanism protocol for right-sizing squads: upfront parallelization analysis + mid-mission scale requests |
+| **Clone** | An additional agent of the same role spawned mid-mission to share the task queue |
 
 ## Model Tiers
 

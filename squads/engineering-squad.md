@@ -28,7 +28,7 @@
 
 **Key:** No Orchestrator agent — human fills that role. 3 agents total (+ recommended Scrum Master in parallel).
 
-**Note:** Scrum Master runs in parallel with all phases, not in the trace dependency chain. Handles Jira ops, error catalog, crystallization protocol, and operational fixes. Spawning the Scrum Master is recommended for all missions — crystallization is the system's long-term learning mechanism.
+**Note:** Scrum Master runs in parallel with all phases, not in the trace dependency chain. Handles issue tracking, error catalog, crystallization protocol, operational fixes, and **scaling monitoring** (see below). Spawning the Scrum Master is recommended for all missions — crystallization is the system's long-term learning mechanism.
 
 ### Full Engineering
 
@@ -50,6 +50,17 @@
 ## Orchestration: Sequential Pipeline with Trace-Based Gating
 
 ```
+Phase 0: PARALLELIZATION ANALYSIS  (Full Engineering — Orchestrator only)
+  Before spawning any agents:
+  1. Write initial task decomposition to TaskList
+  2. Count total tasks
+  3. Identify independent tracks (no shared file writes between tracks)
+  4. Apply threshold:
+     - Tasks ≤ 5 or no independent tracks → single Implementer (proceed to Phase 1)
+     - Tasks > 5 AND 2+ independent tracks → spawn 2 Implementers from the start
+  5. Document decision in Commander's Intent "Resources" field on the blackboard
+  Reference: protocols/dynamic-scaling.md §Upfront
+  ↓
 Phase 1: FRAME
   Human (or Orchestrator) writes Commander's Intent to blackboard
   ↓
@@ -267,6 +278,37 @@ At YELLOW: checkpoint immediately, increase write frequency.
 At RED: write final findings to blackboard, signal relay readiness to team lead.
 At CRITICAL: stop new work, re-read your checkpoint from the blackboard.""")
 ```
+
+---
+
+## Scrum Master: Scaling Monitoring
+
+During the mission, in addition to normal SM duties, the Scrum Master monitors:
+
+1. **Budget zones** — check all agents' context budget zones after each phase
+   transition and agent completion message.
+   `# {TOOL: run context budget tracker for all agents}`
+2. **Queue imbalance** — check TaskList for any agent owning >5 pending unclaimed tasks.
+
+When either trigger fires:
+- Write a `## Scale Requests` entry to the blackboard (status: PROPOSED)
+- Send a message to Orchestrator: `"Scale request filed — see ## Scale Requests"`
+
+Full scaling rules, autonomy limits, and clone spawn template:
+→ `protocols/dynamic-scaling.md`
+
+---
+
+## Productive Waiting
+
+> "If all your phase-specific tasks are either in progress by others or not
+> yet unblocked, do preparatory work within your role boundary: read the
+> files listed in the Designer's Change Plan, review the blackboard
+> Findings, or pre-load context for your upcoming phase. Do not sit truly
+> idle — context spent reading now reduces time needed when your phase
+> starts."
+
+This applies especially to the Verifier waiting on the Implementer to complete.
 
 ---
 
