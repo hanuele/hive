@@ -25,7 +25,7 @@
 | **Facilitator** | Orchestrator | Orchestrator (opus) | Frames initiative, synthesizes execution plan |
 | **Decomposer** | Architect | Specialist (sonnet) | Breaks initiative into squad-sized missions, maps dependencies |
 | **Risk Reviewer** | Challenger | Specialist (sonnet) | Identifies cross-mission risks, resource bottlenecks, irreversibility points |
-| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol, operational fixes (parallel) |
+| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update \), operational fixes (parallel) |
 
 **Key:** 3 agents (+ recommended SM). Produces a plan document. Human executes. Cost-effective for most multi-squad needs.
 
@@ -38,7 +38,7 @@
 | **Meta-Orchestrator** | Orchestrator | Orchestrator (opus) | Plans, sequences, spawns sub-squads, manages handoffs, integrates outputs |
 | **Decomposer** | Architect | Specialist (sonnet) | Breaks initiative into missions, designs handoff contracts |
 | **Monitor** | Challenger (monitoring lens) | Specialist (sonnet) | Watches for budget escalations, blocked dependencies, scope drift, conflicts |
-| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol, operational fixes (parallel) |
+| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update \), operational fixes (parallel) |
 
 **Key:** 3 agents (+ recommended SM) plus sub-squads spawned at runtime. Expensive but powerful for large initiatives. The Meta-Orchestrator is one level above individual squad Orchestrators.
 

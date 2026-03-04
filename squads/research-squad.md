@@ -211,8 +211,8 @@ dependency chain. Your responsibilities:
    to events.jsonl for significant findings
 3. POST-MISSION: Run Crystallization Protocol Steps 1-2.5:
    - HARVEST: Collect crystallization candidates from events.jsonl + blackboard
-   - PATTERN: Cross-reference candidate patterns against ALL prior retros
-     in memory/archive/retrospectives/ — count occurrences across missions
+   - PATTERN: Update `memory/active/pattern-tracker.md` — read it, match this
+     mission's candidates, increment counts, flag new PROMOTE candidates
    - DISCERNMENT: For patterns at 3+ occurrences, classify as
      seed-to-water / seed-to-let-rest / seed-we-don't-understand
    - Write PROMOTE proposals (if any) to blackboard ## Operational Status

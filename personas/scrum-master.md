@@ -101,9 +101,9 @@ decomposition (that is the Architect's role).
 3. Include any findings from the retrospective's `## Candidate Patterns` section
 
 ### Step 2 — PATTERN (cross-mission)
-1. Read ALL prior retrospectives in `memory/archive/retrospectives/`
-2. Extract candidate pattern names from each
-3. Cross-reference: which patterns appear in **3+ retros**?
+1. Read `memory/active/pattern-tracker.md`
+2. For each candidate pattern from this mission, check if it already exists in the registry — increment count. If new, add it with count=1.
+3. Check which patterns have reached **3+ occurrences** — these are PROMOTE candidates.
 4. Document the count for each pattern in the current retrospective
 
 ### Step 2.5 — DISCERNMENT
@@ -113,7 +113,10 @@ For each pattern at 3+ occurrences, classify:
 - **Seed we don't understand** → Mark for continued observation
 
 ### Step 3 — PROMOTE (report to human)
-If any pattern crosses the 3+ mission threshold, write a PROMOTE proposal to the blackboard's `## Operational Status` section:
+If any pattern crosses the 3+ mission threshold:
+1. Add it to the **PROMOTE Queue** in `memory/active/pattern-tracker.md` with the proposed rule text.
+2. Create an issue in your project tracker (label: `hive-crystallization`) to track the human decision.
+3. Write a PROMOTE proposal to the blackboard's `## Operational Status` section:
 ```
 PROMOTE CANDIDATE: {Pattern Name}
 Occurrences: {count} across missions: {list}
@@ -123,6 +126,7 @@ Decision: HUMAN REQUIRED
 
 ### Output
 - Updated retrospective with cross-mission pattern counts
+- Updated `memory/active/pattern-tracker.md` with new/incremented patterns
 - `crystallization_candidate` events logged to `events.jsonl`
 - PROMOTE proposals (if any) on the blackboard for human review
 

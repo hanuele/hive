@@ -28,7 +28,7 @@
 
 **Key:** No Orchestrator agent — human fills that role. 3 agents total (+ recommended Scrum Master in parallel).
 
-**Note:** Scrum Master runs in parallel with all phases, not in the trace dependency chain. Handles issue tracking, error catalog, crystallization protocol, operational fixes, and **scaling monitoring** (see below). Spawning the Scrum Master is recommended for all missions — crystallization is the system's long-term learning mechanism.
+**Note:** Scrum Master runs in parallel with all phases, not in the trace dependency chain. Handles issue tracking, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), operational fixes, and **scaling monitoring** (see below). Spawning the Scrum Master is recommended for all missions — crystallization is the system's long-term learning mechanism.
 
 ### Full Engineering
 

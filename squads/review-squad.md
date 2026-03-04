@@ -41,7 +41,7 @@ Add when scope is broad or standards compliance is critical:
 |------|---------|------|-----------|------|-------|
 | Scrum Master | Scrum Master | operational | `general-purpose` | Specialist (sonnet) | Read, Write, Bash (no code edit) |
 
-Runs in parallel with all phases. Handles error catalog, crystallization protocol (cross-mission pattern tracking), issue tracking, and post-mission cleanup.
+Runs in parallel with all phases. Handles error catalog, crystallization protocol (update `memory/active/pattern-tracker.md` — read it, match this mission's candidates, increment counts, flag new PROMOTE candidates), issue tracking, and post-mission cleanup.
 
 ---
 

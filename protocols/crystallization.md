@@ -20,7 +20,11 @@ The Orchestrator aggregates — agents select. This distributes the learning fun
 
 ### Step 2 — PATTERN (threshold: 3+ occurrences)
 
-Observations that appeared 3+ times across agents or missions are documented as candidate patterns in auto-memory. Use the pattern form:
+Read `memory/active/pattern-tracker.md`. For each candidate pattern from this mission:
+- **If it already exists in the registry:** increment the count and add this mission's name.
+- **If it is new:** add a new row with count=1, the mission name, and discernment classification.
+
+Patterns that reach 3+ occurrences are documented using the pattern form:
 
 ```markdown
 ## {Pattern Name}
@@ -49,19 +53,28 @@ This transforms the Crystallization Spiral from a neutral learning system into a
 
 Patterns validated across 3+ missions are proposed as rules. The proposal goes to the human as a suggested CLAUDE.md amendment or protocol update.
 
+When a pattern reaches the PROMOTE threshold:
+1. Add it to the tracker's **PROMOTE Queue** section with the proposed rule text.
+2. Create an issue in your project tracker (label: `hive-crystallization`) to track the human decision.
+
 ### Step 4 — CODIFY (threshold: 5+ missions, human-approved)
 
 Rules that prove stable are embedded in architecture: code changes, hooks, agent prompts, or squad templates.
 
+When a human approves a PROMOTE candidate:
+1. Record the decision in the tracker's **Decision Log** (date, rationale).
+2. After codifying, move the pattern to the tracker's **Implemented** section with a link to the commit/PR.
+
 ## Who Performs This
 
-- **The Scrum Master** runs Steps 1-2.5 after every mission (mandatory post-mission phase). This includes cross-referencing candidate patterns against ALL prior retrospectives to check occurrence thresholds.
+- **The Scrum Master** runs Steps 1-2.5 after every mission (mandatory post-mission phase). This includes updating `memory/active/pattern-tracker.md` with this mission's candidate patterns and checking occurrence thresholds.
 - If no Scrum Master is spawned, the **Orchestrator** runs Steps 1-2.5.
 - Steps 3-4 are triggered when thresholds are met and require human approval. The Scrum Master writes PROMOTE proposals to the blackboard; the human decides.
 
 ## Output
 
-A retrospective file at `memory/archive/retrospectives/{mission-name}-retro.md`.
+- A retrospective file at `memory/archive/retrospectives/{mission-name}-retro.md`.
+- Updated `memory/active/pattern-tracker.md` with new/incremented patterns.
 
 ## Retrospective File Template
 
