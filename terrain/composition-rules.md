@@ -8,7 +8,10 @@
 | High uncertainty, any, any, any | **Research** | 3-4 | Orchestrator + 2 Investigators + optional Challenger |
 | Any, irreversible, any, high stakes | **Review** | 3-4 | Orchestrator + 2-3 Challengers (different lenses) |
 | Medium uncertainty, reversible, broad, medium stakes | **Full Engineering** | 4-5 | Orchestrator + Architect + Operator + Tester + optional Security |
-| High uncertainty, irreversible, broad, high stakes | **Strategy** *(deferred)* | 4-5 | Orchestrator + Investigator + Innovator + Challenger + Architect |
+| Need novel solutions, design alternatives | **Creative** | 4-5 | Orchestrator + 2-3 Innovators + Challenger (Evaluator) |
+| High uncertainty, irreversible, broad, high stakes | **Strategy** | 4-6 | Orchestrator + 2-4 Investigators + Challenger + Architect |
+| Conceptual ambiguity, deep understanding needed | **Philosophy** | 3 | Orchestrator + Investigator (Explorer) + Challenger (Socratic) |
+| Initiative spans multiple squad types | **Management** | 3-4 | Orchestrator + Architect (Decomposer) + Challenger (Risk/Monitor) |
 
 ## Tiebreaker Rule
 

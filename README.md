@@ -170,7 +170,10 @@ hive/
 │   ├── research-squad.md        #   High uncertainty → fan-out/fan-in research
 │   ├── engineering-squad.md     #   Known requirements → build/ship
 │   ├── review-squad.md          #   High stakes → adversarial verification
-│   └── _deferred/               #   Future squad templates (creative, strategy, etc.)
+│   ├── creative-squad.md         #   Novel solutions, divergent exploration
+│   ├── strategy-squad.md         #   Scenario planning, robust decision-making
+│   ├── philosophy-squad.md       #   Socratic exploration, deep understanding
+│   └── management-squad.md       #   Multi-mission coordination
 │
 ├── constitutions/               # Governance rules embedded in every agent
 │   ├── universal.md             #   The Thirteen Principles
@@ -202,7 +205,8 @@ hive/
 ├── differentiation/             # How agents think differently
 │   ├── perspective-frames.md    #   Cognitive lenses per persona
 │   ├── search-heuristics.md     #   How each persona searches
-│   └── domain-lenses.md         #   Domain-specific viewpoints
+│   ├── domain-lenses.md         #   Domain-specific viewpoints
+│   └── creative-heuristics.md    #   Provocateur / Synthesist / Minimalist overlay
 │
 ├── memory/                      # Shared workspace (the stigmergy substrate)
 │   ├── hive-status.md           #   Active + completed missions tracker

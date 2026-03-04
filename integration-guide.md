@@ -60,6 +60,50 @@ Use for independent quality assessment before merging significant changes.
 - Security-sensitive changes (auth, API keys, credentials)
 - Scoring formula changes (affect investment decisions)
 
+### 4. Creative Squad — Idea Generation
+
+Use when the team needs novel solutions, design alternatives, or creative approaches before committing to an implementation path.
+
+**Trigger:** Tasks requiring design exploration, alternatives, architectural brainstorming, or any situation where the first obvious solution shouldn't be the only one considered.
+
+**Examples:**
+- Dashboard layout alternatives (multiple design concepts before implementation)
+- Architecture options for new subsystems
+- UX flow design for complex workflows
+
+### 5. Strategy Squad — Scenario Planning
+
+Use when facing decisions with multiple plausible futures. Produces robust actions that work across scenarios, not bets on a single prediction.
+
+**Trigger:** Decisions with high uncertainty about external factors (API changes, technology evolution, scaling needs).
+
+**Examples:**
+- Data source strategy (what if a key API changes terms?)
+- Scaling strategy (what if user base grows 10x vs. stays small?)
+- Technology migration planning (what if a key dependency is deprecated?)
+
+### 6. Philosophy Squad — Deep Understanding
+
+Use when the team needs to think deeply about a concept before acting. Not for building — for understanding.
+
+**Trigger:** Conceptual ambiguity, methodology questions, "what does this really mean?" situations.
+
+**Examples:**
+- Domain methodology edge cases
+- Boundary definitions (when does one state become another?)
+- Data quality philosophy (when is "good enough" good enough?)
+
+### 7. Management Squad — Multi-Mission Coordination
+
+Use when a task is too large for a single squad. Decomposes initiatives into sequenced squad missions.
+
+**Trigger:** Initiatives spanning multiple squad types, requiring cross-squad handoffs, or too large to keep in one human's head.
+
+**Examples:**
+- Major feature rollout (research → design → build → review)
+- Platform migration (strategy → engineering → verification)
+- New methodology integration (philosophy → research → engineering)
+
 ## Workflow Integration
 
 ```
