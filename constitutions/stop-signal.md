@@ -28,7 +28,7 @@ A Stop Signal begins with what it acknowledges. Even the most critical challenge
 5. A CRITICAL Stop Signal blocks progress on that claim until resolved.
 
 6. If re-evaluation yields no resolution (evidence remains contested):
-   - **CRITICAL:** Escalate to human. No further agent deliberation.
+   - **CRITICAL:** Escalate per `protocols/escalation-rules.md` — Tier 3a (Claude) if reversible, Tier 3b (human) if irreversible or uncertain. No further agent deliberation.
    - **WARNING:** Facilitator decides. Log reasoning. Move forward.
    - **INFO:** Facilitator closes as "unresolved." Document for retrospective.
 

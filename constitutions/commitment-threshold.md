@@ -10,7 +10,7 @@ Every decision protocol must define its quorum — the number of independent con
 |-------------|----------------|----------|------------|
 | **Low** (reversible, low cost) | 1 confirmation | 5 min | Auto-proceed after time box |
 | **Medium** (reversible, moderate cost) | 2 independent confirmations | 15 min | Lead decides after time box |
-| **High** (irreversible or high cost) | 3 independent + human gate | 30 min | Escalate to human after time box |
+| **High** (irreversible or high cost) | 3 independent + Tier 3b gate | 30 min | Escalate to human after time box |
 
 ## Abandonment Quorum (When to Close an Alternative)
 
@@ -31,7 +31,7 @@ A formally closed alternative cannot be revived without new evidence submitted v
 | Routine, low-risk, reversible | **Advice Process** — act after consulting | Fast | Low |
 | Binary choice, moderate risk | **Weighted Vote** — experts count more | Fast | Medium |
 | Multiple valid approaches | **Nominal Group Technique** — generate then rank | Medium | Medium |
-| High-stakes, irreversible | **Dialectical Inquiry** + human gate | Slow | High |
+| High-stakes, irreversible | **Dialectical Inquiry** + Tier 3b gate | Slow | High |
 | Fundamental disagreement | **Structured Debate** (2 rounds max) + escalation | Medium | High |
 
 *Quorum Tier maps to the Proceed Quorum table above. High-stakes protocols require both Proceed Quorum AND Abandonment Quorum to be satisfied before the decision is finalized.*

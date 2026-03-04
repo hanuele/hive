@@ -13,7 +13,7 @@
 | **Researcher A** | Investigator | Specialist (sonnet) | Data gathering, source triangulation |
 | **Researcher B** | Investigator (contrarian lens) | Specialist (sonnet) | Alternative hypotheses, assumption checking |
 | **Critic** (optional) | Challenger | Specialist | Adversarial review before synthesis |
-| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Issue tracking, error catalog, crystallization protocol, operational fixes (parallel) |
+| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol, operational fixes (parallel) |
 
 ## Orchestration Pattern
 
@@ -61,7 +61,7 @@ See `constitutions/commitment-threshold.md` for quorum rules.
 
 If two rounds of structured debate produce no convergence, the Facilitator does not add a third round. The Facilitator either:
 - **(a)** Reframes the question to find a solution space neither position occupies, or
-- **(b)** Escalates to a human decision gate with both positions documented in SBAR format
+- **(b)** Escalates per escalation-rules.md (Tier 3a if reversible, Tier 3b if irreversible) with both positions documented in SBAR format
 
 ## Deep Dive Option
 
@@ -120,7 +120,19 @@ clean exit and may leave orphaned team resources.
 
 Follow the Checkpoint Protocol (protocols/checkpoint.md): write working state
 to the blackboard's "## Current State" section after every 3 findings or
-before any long tool operation. ...""")
+before any long tool operation.
+
+## CRITICAL: Context Budget
+
+Initialize the budget tracker at session start:
+  bash scripts/context-budget.sh init investigator-alpha --profile subagent
+
+After each major operation (file read, web fetch, multi-step analysis):
+  bash scripts/context-budget.sh tick investigator-alpha --files-read {bytes}
+
+At YELLOW: checkpoint immediately, increase write frequency.
+At RED: write final findings to blackboard, signal relay readiness to team lead.
+At CRITICAL: stop new work, re-read your checkpoint from the blackboard. ...""")
 Agent(subagent_type="general-purpose", name="investigator-beta",
       team_name="research-{topic}",
       prompt="""You are The Investigator. [paste personas/investigator.md]
@@ -147,7 +159,19 @@ clean exit and may leave orphaned team resources.
 
 Follow the Checkpoint Protocol (protocols/checkpoint.md): write working state
 to the blackboard's "## Current State" section after every 3 findings or
-before any long tool operation. ...""")
+before any long tool operation.
+
+## CRITICAL: Context Budget
+
+Initialize the budget tracker at session start:
+  bash scripts/context-budget.sh init investigator-beta --profile subagent
+
+After each major operation (file read, web fetch, multi-step analysis):
+  bash scripts/context-budget.sh tick investigator-beta --files-read {bytes}
+
+At YELLOW: checkpoint immediately, increase write frequency.
+At RED: write final findings to blackboard, signal relay readiness to team lead.
+At CRITICAL: stop new work, re-read your checkpoint from the blackboard. ...""")
 
 # Scrum Master (recommended — runs in parallel with all phases)
 Agent(subagent_type="general-purpose", name="scrum-master",
@@ -184,5 +208,18 @@ Example:
   SendMessage(type="shutdown_response", request_id="<requestId from message>", approve=True)
 
 This is a hard requirement. Failure to respond terminates your session without
-clean exit and may leave orphaned team resources.""")
+clean exit and may leave orphaned team resources.
+
+## CRITICAL: Context Budget
+
+Initialize the budget tracker at session start:
+  bash scripts/context-budget.sh init scrum-master --profile subagent
+
+After each major operation:
+  bash scripts/context-budget.sh tick scrum-master --files-read {bytes}
+
+Monitor ALL agents' budget status:
+  bash scripts/context-budget.sh render-all
+
+Render budget status to blackboard ## Relay Baton → ### Budget Status on zone changes.""")
 ```

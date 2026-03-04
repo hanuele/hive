@@ -28,7 +28,7 @@
 
 **Key:** No Orchestrator agent — human fills that role. 3 agents total (+ recommended Scrum Master in parallel).
 
-**Note:** Scrum Master runs in parallel with all phases, not in the trace dependency chain. Handles issue tracking, error catalog, crystallization protocol, and operational fixes. Spawning the Scrum Master is recommended for all missions — crystallization is the system's long-term learning mechanism.
+**Note:** Scrum Master runs in parallel with all phases, not in the trace dependency chain. Handles Jira ops, error catalog, crystallization protocol, and operational fixes. Spawning the Scrum Master is recommended for all missions — crystallization is the system's long-term learning mechanism.
 
 ### Full Engineering
 
@@ -172,7 +172,19 @@ Under the "## Change Plan" section.
 After completing your plan, write a trace file:
 echo '{"ts":"...","mission":"...","agent":"designer","action":"design_complete","detail":"..."}' > .claude/hive/memory/active/traces/{mission}-designer-design_complete.trace
 
-Follow BLUF format for all communication.""")
+Follow BLUF format for all communication.
+
+## CRITICAL: Context Budget
+
+Initialize the budget tracker at session start:
+  bash scripts/context-budget.sh init designer --profile subagent
+
+After each major operation (file read, web fetch, multi-step analysis):
+  bash scripts/context-budget.sh tick designer --files-read {bytes}
+
+At YELLOW: checkpoint immediately, increase write frequency.
+At RED: write final findings to blackboard, signal relay readiness to team lead.
+At CRITICAL: stop new work, re-read your checkpoint from the blackboard.""")
 
 Agent(subagent_type="general-purpose", name="implementer",
       team_name="eng-{ticket}", model="sonnet",
@@ -201,7 +213,19 @@ to the blackboard's "## Current State" section after every 3 findings or
 before any long tool operation.
 
 After completing implementation, write a trace file.
-Do NOT deviate from the change plan without documenting why.""")
+Do NOT deviate from the change plan without documenting why.
+
+## CRITICAL: Context Budget
+
+Initialize the budget tracker at session start:
+  bash scripts/context-budget.sh init implementer --profile subagent
+
+After each major operation (file read, multi-file edit, test suite):
+  bash scripts/context-budget.sh tick implementer --files-read {bytes}
+
+At YELLOW: checkpoint immediately, increase write frequency.
+At RED: write final findings to blackboard, signal relay readiness to team lead.
+At CRITICAL: stop new work, re-read your checkpoint from the blackboard.""")
 
 Agent(subagent_type="general-purpose", name="verifier",
       team_name="eng-{ticket}", model="sonnet",
@@ -229,7 +253,19 @@ clean exit and may leave orphaned team resources.
 4. Check coding guidelines compliance
 5. Write results to blackboard under "## Verification"
 
-After completing verification, write a trace file.""")
+After completing verification, write a trace file.
+
+## CRITICAL: Context Budget
+
+Initialize the budget tracker at session start:
+  bash scripts/context-budget.sh init verifier --profile subagent
+
+After each major operation (test suite run, file read):
+  bash scripts/context-budget.sh tick verifier --files-read {bytes}
+
+At YELLOW: checkpoint immediately, increase write frequency.
+At RED: write final findings to blackboard, signal relay readiness to team lead.
+At CRITICAL: stop new work, re-read your checkpoint from the blackboard.""")
 ```
 
 ---
@@ -246,14 +282,14 @@ After completing verification, write a trace file.""")
 | Verify | Tests fail | Normal flow: Report to human for decision |
 | Verify | Tests pass but guidelines violated | L2: Document specific violations |
 
-**Max retry cycles:** 1. If the retry also fails, escalate to human (L3).
+**Max retry cycles:** 1. If the retry also fails, escalate per escalation-rules.md (Tier 3a if reversible, Tier 3b if irreversible).
 
 ---
 
 ## Decision Protocol
 
 - **Focused Build:** Human makes all decisions. No quorum needed — human authority is sufficient.
-- **Full Engineering:** Orchestrator manages pipeline. Design disputes → Tier 2 (Orchestrator decides). Implementation disputes → Tier 3 (human decides, code changes are irreversible within worktree context).
+- **Full Engineering:** Orchestrator manages pipeline. Design disputes: Tier 2 (Orchestrator decides). Unresolved: Tier 3a (Claude). Implementation disputes: Tier 3a (Claude decides for reversible changes) or Tier 3b (human decides for irreversible changes).
 
 ---
 
@@ -281,5 +317,5 @@ necessary deviations. Prefer the simplest correct implementation."
 
 - **Focused Build is the default.** Only escalate to Full Engineering when the terrain demands it. "Start with 3, prove you need more."
 - **Designer is read-only.** This prevents the temptation to "just quickly fix it" instead of writing a plan. Separation of design and implementation is the point.
-- **One retry cycle max.** Infinite loops are the enemy of forward progress. If one retry doesn't fix it, the problem is harder than expected — escalate to human.
+- **One retry cycle max.** Infinite loops are the enemy of forward progress. If one retry doesn't fix it, the problem is harder than expected — escalate per escalation-rules.md (Tier 3a or 3b).
 - **No new personas.** Architect with operator lens is still The Architect. Challenger with correctness lens is still The Challenger. Lens injection differentiates without proliferating.

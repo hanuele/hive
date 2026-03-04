@@ -61,12 +61,10 @@ Not all failures are equal. A file read timeout is different from credential exp
 1. Log event to `events.jsonl` with `event: "failure"`, `level: "L3"`
 2. **Pause mission** — no further agent actions until resolved
 3. Write Stop Signal to blackboard with full context
-4. Notify human with BLUF summary:
-   - What happened
-   - What agents disagree on (if applicable)
-   - What the security finding is (if applicable)
-   - Recommended resolution options
-5. Human decides: resume, modify scope, or abort
+4. Route per escalation-rules.md:
+   - **Tier 3a (Claude):** If the blocking issue is reversible and within mission scope, Claude resolves autonomously
+   - **Tier 3b (Human Partner):** If irreversible, security-related, or Claude is uncertain
+5. Human or Claude decides: resume, modify scope, or abort
 
 **Examples:**
 - Two agents disagree on whether a database migration is needed
@@ -135,21 +133,21 @@ Not all failures are equal. A file read timeout is different from credential exp
 |-------|-----|-------|-------|-------|-------|-------|
 | L1 Recoverable | Yes | Max 2 | No | No | No | Note only |
 | L2 Degraded | Yes | Optional | No | Optional | No | Section in retro |
-| L3 Blocking | Yes | No | Yes | Required | No | Full retro section |
-| L4 Critical | Yes | No | N/A | Notified | Yes | Mandatory standalone |
-| L5 Unknown | Yes | No | Yes (default) | Required | Default L4 | Mandatory + taxonomy review |
+| L3 Blocking | Yes | No | Yes | Tier 3a or 3b | No | Full retro section |
+| L4 Critical | Yes | No | N/A | Notified (3b) | Yes | Mandatory standalone |
+| L5 Unknown | Yes | No | Yes (default) | Required (3b) | Default L4 | Mandatory + taxonomy review |
 
 ## Integration with Escalation Rules
 
-This taxonomy maps to the 3-tier escalation in `escalation-rules.md`:
+This taxonomy maps to the 4-tier escalation in `escalation-rules.md`:
 
 | Failure Level | Escalation Tier |
 |---------------|----------------|
 | L1 | Tier 1 (Agent self-recovery) |
 | L2 | Tier 2 (Facilitator/Orchestrator decides) |
-| L3 | Tier 3 (Human gate) |
-| L4 | Beyond Tier 3 (Emergency abort) |
-| L5 | Beyond Tier 3 (Human classification required) |
+| L3 | Tier 3a (Claude) or Tier 3b (Human Partner) depending on reversibility |
+| L4 | Beyond Tier 3b (Emergency abort + mandatory human review) |
+| L5 | Tier 3b (Human classification required) |
 
 ## Event Format
 

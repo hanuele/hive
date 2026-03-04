@@ -1,16 +1,29 @@
-# Hive Integration Guide
+# Hive Integration Guide — MinersDiners
 
-> How and when to use Hive squads in your development workflow.
+> How and when to use Hive squads in the MinersDiners development workflow.
 
 ## Decision Framework: Solo vs. Squad
 
 | Signal | Work Solo | Spawn a Squad |
 |--------|-----------|--------------|
 | Uncertainty | Low — clear requirements, known path | High — need to research before building |
-| Scope | 1-2 files, single module | Cross-module, 5+ files, multiple concerns |
-| Domains | Single (just DB, or just UI) | Multiple (backend + API + DB + validation) |
-| Stakes | Reversible, low blast radius | Irreversible (migration, API contract, core logic) |
-| Existing knowledge | Well-documented, familiar territory | New territory (new data source, new methodology) |
+| Scope | 1-2 files, single service | Cross-service, 5+ files, multiple concerns |
+| Domains | Single (just DB, or just scraper) | Multiple (scraper + API + DB + validation) |
+| Stakes | Reversible, low blast radius | Irreversible (migration, API contract, scoring formula) |
+| Existing knowledge | Well-documented in CLAUDE.md/LESSONS-LEARNED | New territory (new data source, new methodology) |
+
+## Escalation Model
+
+Hive missions use a 4-tier partnership escalation chain. See `protocols/escalation-rules.md` for full details.
+
+| Tier | Who | Resolves |
+|------|-----|----------|
+| 1 | Agent to Agent | Minor disagreements (structured debate, 2 rounds) |
+| 2 | Agent to Facilitator | Significant disagreements (evidence-based decision) |
+| 3a | Facilitator to Claude | Reversible decisions, design disputes, scope questions |
+| 3b | Claude to Human Partner | Irreversible actions, security, financial data, blocking disagreements |
+
+**Key principle:** Claude (Tier 3a) resolves most escalations autonomously for reversible, in-scope decisions. Human partners are reserved for irreversible or high-stakes decisions (Tier 3b).
 
 ## Integration Points
 
@@ -18,39 +31,39 @@
 
 Use when exploring something new before implementing. High-uncertainty, knowledge-gathering missions.
 
-**Trigger:** {ISSUE_TRACKER} tickets with labels like `{ISSUE_TRACKER_LABELS}` where acceptance criteria aren't yet clear.
+**Trigger:** Jira tickets with labels `domain-knowledge`, `domain-intelligence`, or `data-gap` where acceptance criteria aren't yet clear.
 
 **Examples:**
-- New data source evaluation (API capability vs. data quality gaps)
-- Domain methodology refinements (mapping theory to implementation)
-- Edge case investigation (ambiguous scoring or business rules)
+- New data source evaluation (API capability vs. data quality/coverage gaps)
+- Lassonde Curve refinements (mapping theory to actual data fields)
+- Durrett methodology edge cases (scoring ambiguities)
 
 ### 2. Engineering Squad — Multi-Service Features
 
-Use when building features that touch multiple services or modules. Focused Build (3 agents, human as Orchestrator) is cost-effective for narrow scope. Full Engineering (4 agents) for broad scope.
+Use when building features that touch multiple microservices. Focused Build (3 agents, human as Orchestrator) is cost-effective for narrow scope. Full Engineering (4 agents) for broad scope.
 
-**Trigger:** {ISSUE_TRACKER} tickets touching 3+ services or requiring changes across multiple layers.
+**Trigger:** Jira tickets touching 3+ services or requiring changes across data-extraction, analysis-engine, and visualization.
 
 **Examples:**
-- New data pipeline + validation + API endpoint
+- New scraper + validation + API endpoint
 - Database migration + service changes
-- New feature requiring frontend + backend + database changes
+- COMEX Silver Monitor (KAN-201) — new pipeline + analysis + dashboard
 
 ### 3. Review Squad — High-Stakes Quality Gate
 
 Use for independent quality assessment before merging significant changes.
 
-**Trigger:** PRs touching database schemas, security configurations, core business logic, or financial calculations.
+**Trigger:** PRs with labels `database`, `security`, or `validation`, or PRs touching `shared/database/` or scoring formulas.
 
 **Examples:**
 - Pre-release review (audit diff since last release)
 - Security-sensitive changes (auth, API keys, credentials)
-- Core logic changes (affect critical business decisions)
+- Scoring formula changes (affect investment decisions)
 
 ## Workflow Integration
 
 ```
-1. Pick {ISSUE_TRACKER} ticket
+1. Pick Jira ticket
 2. Assess terrain (4 axes from terrain/analysis-axes.md)
    ├── Low uncertainty, narrow → Work solo (existing workflow)
    └── High uncertainty OR broad → Spawn Hive mission
@@ -69,13 +82,13 @@ The Hive layers on top — it doesn't replace existing single-purpose agents:
 
 | Existing Agent | Still Use For | Squad Alternative (When) |
 |---------------|---------------|-------------------------|
-| Code reviewer | Standard PRs | Review Squad → high-stakes PRs |
-| Explorer | Quick codebase questions | Research Squad → deep domain investigation |
-| Test runner | After code changes | Engineering Squad Verifier → coordinated build+test |
-| Migration checker | Migration risk assessment | Engineering Squad Designer → plans migration as part of broader feature |
-| Deploy coordinator | Deployment pipeline | N/A — deployment stays as single-agent workflow |
+| `reviewer` | Standard PRs | Review Squad → high-stakes PRs |
+| `explorer` | Quick codebase questions | Research Squad → deep domain investigation |
+| `test-runner` | After code changes | Engineering Squad Verifier → coordinated build+test |
+| `migration-guardian` | Migration risk assessment | Engineering Squad Designer → plans migration as part of broader feature |
+| `deploy-coordinator` | Deployment pipeline | N/A — deployment stays as single-agent workflow |
 
-## Issue Tracker Convention
+## Jira Convention
 
 Add a terrain assessment to ticket comments when picking up a ticket:
 
@@ -90,9 +103,21 @@ Terrain: uncertainty=high, reversibility=reversible, breadth=broad, stakes=mediu
 Mission retrospective
   → Candidate patterns (in retrospective file)
   → 3+ observations → PROMOTE review
-  → Confirmed patterns → project lessons learned
+  → Confirmed patterns → docs/LESSONS-LEARNED.md
   → Architecture-level patterns → CLAUDE.md updates
 ```
+
+## Mission Resumption
+
+When a session breaks mid-mission, blackboards and batons persist on disk. Use `/hive-resume` to pick up where you left off.
+
+| State | What happened | Action |
+|-------|--------------|--------|
+| CLEANUP_ONLY | Mission completed, blackboard not archived | Auto-archive blackboard + traces |
+| COMPLETE_NEEDS_CLEANUP | Synthesis done, but retro/Jira/session log missing | Run remaining cleanup protocols, then archive |
+| INCOMPLETE | Mission interrupted mid-work | Read baton, re-spawn squad with RESUMPTION CONTEXT |
+
+The `/hive` skill also warns about active missions before launching new ones.
 
 ## When NOT to Use the Hive
 

@@ -10,6 +10,11 @@
 - On-demand: when `active/traces/` or `active/blackboard/` accumulates
   files from missions listed as completed in `hive-status.md`
 
+
+**Automation:** The `/hive-resume` skill automates this checklist for stale missions.
+Run it from a fresh session to scan, classify, and clean up interrupted missions.
+See `.claude/skills/hive-resume/SKILL.md`.
+
 ## Checklist
 
 ### 1. Archive Traces
@@ -41,6 +46,26 @@ Log the event:
 ```
 
 **Never archive `_template.md`.** It stays in active permanently.
+
+### 2.5. Archive State & Budget Files
+
+Move any state machine and budget tracker files for the completed mission:
+
+```bash
+# Archive state machine file (if exists)
+if [ -f ".claude/hive/memory/active/${MISSION}-state.json" ]; then
+    mv ".claude/hive/memory/active/${MISSION}-state.json" \
+       ".claude/hive/memory/archive/state/"
+fi
+
+# Archive budget tracker files for all mission agents
+for f in .claude/hive/memory/active/budget/*.json; do
+    [ -f "$f" ] && mv "$f" ".claude/hive/memory/archive/state/"
+done
+```
+
+Budget files from `active/budget/` are always cleaned up — they are per-session,
+not per-mission. State machine files are mission-scoped and archived by name.
 
 ### 3. Verify Retrospective
 
@@ -74,8 +99,10 @@ archiving — it may represent in-progress work.
 |-----------|-----------|------------|--------|
 | `active/blackboard/` | 5 files | 10 files | Archive completed missions |
 | `active/traces/` | 0 files between missions | 20 files | Archive by mission |
+| `active/budget/` | 0 files between missions | 10 files | Archive after mission cleanup |
 | Single blackboard file | 10 KB | 50 KB | Generate briefing (see `protocols/briefing.md`) |
 | `archive/events.jsonl` | 100 KB | 500 KB | Split by year: `events-2026.jsonl` |
+| `archive/state/` | No limit | — | Archived state machine + budget files |
 | `archive/blackboard/` | No limit | — | Append-only archive |
 
 When a blackboard exceeds 10 KB during a mission, the Scrum Master generates
@@ -99,6 +126,7 @@ memory/archive/
 │   ├── status-summary.md    # One-line per completed mission
 │   └── agent-activity.md    # Per-agent activity across missions
 ├── retrospectives/          # Post-mission retrospectives (1 file per mission)
+├── state/                   # Archived state machine + budget tracker files
 └── traces/                  # Per-mission subdirectories
     └── {mission-name}/      # All trace files for that mission
 ```
