@@ -76,8 +76,9 @@ Both triggers may fire simultaneously; treat as a single scale request.
 ### Who monitors
 
 **Scrum Master** owns operational monitoring. During a mission, SM checks:
-```
-# {TOOL: run context budget tracker for all agents}
+```bash
+# Check all agents' budget zones
+bash scripts/context-budget.sh render-all
 
 # Check TaskList for imbalance
 TaskList()  # then count per-owner pending tasks
@@ -205,10 +206,10 @@ without clean exit and may leave orphaned team resources.
 ## CRITICAL: Context Budget
 
 Initialize the budget tracker at session start:
-  # {TOOL: initialize context budget tracker for {clone-name}}
+  bash scripts/context-budget.sh init {clone-name} --profile subagent
 
 After each major operation:
-  # {TOOL: tick context budget tracker for {clone-name}}
+  bash scripts/context-budget.sh tick {clone-name} --files-read {bytes}
 
 At YELLOW: checkpoint immediately, increase write frequency.
 At RED: write final findings to blackboard, signal relay readiness.

@@ -26,7 +26,7 @@
 | **Scenario Builder C** (optional) | Investigator | Specialist (sonnet) | Third scenario (for 3+ uncertainty axes) |
 | **Stress Tester** | Challenger | Specialist (sonnet) | Attacks each scenario for consistency, blind spots, hidden assumptions |
 | **Response Designer** | Architect | Specialist (sonnet) | Designs response strategies per scenario (what would we do if...) |
-| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update \), operational fixes (parallel) |
+| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), operational fixes (parallel) |
 
 ### Scaling by Scenario Count
 

@@ -24,7 +24,7 @@
 | **Ideator A** | Innovator | Specialist (sonnet) | Independent idea generation (diverge phase) |
 | **Ideator B** | Innovator (different heuristic) | Specialist (sonnet) | Independent idea generation from different angle |
 | **Evaluator** | Challenger | Specialist (sonnet) | Ranks ideas against criteria, stress-tests selected ideas |
-| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update \), operational fixes (parallel) |
+| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), operational fixes (parallel) |
 
 Optional: A third Ideator (Innovator with contrarian or analogical heuristic) for maximum divergence.
 

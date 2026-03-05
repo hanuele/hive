@@ -84,8 +84,8 @@ decomposition (that is the Architect's role).
 
 | Phase | Action |
 |-------|--------|
-| Mission start | Read error catalog, pre-warn known failures, set up issue tracking. Verify budget trackers initialized for all agents. |
-| During mission | Monitor for L2+ failures, apply catalog fixes, log new failures. Create issue for unresolved errors (Rule 6). Write `crystallization_candidate` events to `events.jsonl` for significant findings. **Scaling:** after each phase transition, check all agents' context budget zones and check TaskList for queue imbalance; if any agent hits YELLOW or owns >5 pending tasks, write a `## Scale Requests` entry and notify Orchestrator. See `protocols/dynamic-scaling.md`. |
+| Mission start | Read error catalog, pre-warn known failures, set up Jira ticket (transition to "In Arbeit"). Verify budget trackers initialized for all agents. |
+| During mission | Monitor for L2+ failures, apply catalog fixes, log new failures. Create Jira ticket for unresolved errors (Rule 6). Write `crystallization_candidate` events to `events.jsonl` for significant findings. Monitor budget tracker zones — render status to blackboard `## Relay Baton` → `### Budget Status` on zone changes. **Scaling:** after each phase transition, run `bash scripts/context-budget.sh render-all` and check TaskList for queue imbalance; if any agent hits YELLOW or owns >5 pending tasks, write a `## Scale Requests` entry and notify Orchestrator. See `protocols/dynamic-scaling.md`. |
 | After research/review phase | Generate briefing if blackboard >10KB. Decompose findings into tasks. |
 | Mission end | Update Jira (transition to "Erledigt", add comment, set due date), update error catalog |
 | Post-mission crystallization | Run Crystallization Protocol Steps 1-2.5 (see below). This is **mandatory** — not optional. |
@@ -115,7 +115,7 @@ For each pattern at 3+ occurrences, classify:
 ### Step 3 — PROMOTE (report to human)
 If any pattern crosses the 3+ mission threshold:
 1. Add it to the **PROMOTE Queue** in `memory/active/pattern-tracker.md` with the proposed rule text.
-2. Create an issue in your project tracker (label: `hive-crystallization`) to track the human decision.
+2. Create a Jira ticket (label: `hive-crystallization`) to track the human decision.
 3. Write a PROMOTE proposal to the blackboard's `## Operational Status` section:
 ```
 PROMOTE CANDIDATE: {Pattern Name}

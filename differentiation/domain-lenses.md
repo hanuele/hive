@@ -51,7 +51,7 @@ Agent(name="security-reviewer",
              auth bypass, CWE-classified vulnerabilities.")
 ```
 
-This pairing was validated in operational missions: correctness found 9 issues, security found 6, with only 2 convergent — 87% unique findings across lenses.
+This pairing was validated in Mission 3 (KAN-219 Review): correctness found 9 issues, security found 6, with only 2 convergent — 87% unique findings across lenses.
 
 ## Relationship to Perspective Frames
 

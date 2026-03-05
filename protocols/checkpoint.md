@@ -33,6 +33,9 @@ Blackboard `## Current State` → `### Agent Checkpoints` section.
    overhead. Err on the side of writing too often, not too rarely.
 4. **After context contraction:** Re-read the blackboard's `## Current State`
    section. Your checkpoint is the ground truth, not your recollection.
+5. **YELLOW zone rule:** When the budget tracker signals YELLOW, checkpoint
+   after *every* decision — not just every 3 findings. This is the transition
+   from standard to heightened checkpoint frequency.
 
 ## Example
 
@@ -40,8 +43,23 @@ Blackboard `## Current State` → `### Agent Checkpoints` section.
 ### Agent Checkpoints
 
 [14:32] investigator-alpha CHECKPOINT:
-- Key conclusion: Primary data source covers 45/60 required fields
-- Working hypothesis: Missing fields can be supplemented from secondary sources
-- Next step: Cross-reference secondary source schema against missing field list
+- Key conclusion: Alpha Vantage covers 45/60 required fields
+- Working hypothesis: Missing fields can be supplemented from SEC filings
+- Next step: Cross-reference SEC XBRL tags against missing field list
 - Unwritten findings: 2
 ```
+
+## Relationship to Return to Sangha
+
+Checkpoints and the Living Baton serve different purposes:
+
+- **Checkpoint:** Your working state for *yourself* after context contraction.
+  Written to `### Agent Checkpoints`. Overwritten each time.
+- **Living Baton:** Relay state for a *different agent* who has never seen your
+  conversation. Written to `## Relay Baton`. Updated on meaningful events.
+
+Both use the blackboard. Both survive context contraction. But the checkpoint is
+a snapshot of where you are; the baton is a handoff of everything a successor needs.
+
+At YELLOW zone, both should be updated more frequently. At RED zone, finalize the
+baton — a fresh agent may need to take over. See `protocols/return-to-sangha.md`.

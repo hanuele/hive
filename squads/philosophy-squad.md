@@ -23,7 +23,7 @@
 | **Facilitator** | Orchestrator | Orchestrator (opus) | Frames the question, holds the space, distills understanding |
 | **Explorer** | Investigator | Specialist (sonnet) | Builds understanding through research and reasoning |
 | **Questioner** | Challenger (Socratic lens) | Specialist (sonnet) | Asks probing questions, challenges assumptions, deepens inquiry |
-| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update \), operational fixes (parallel) |
+| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), operational fixes (parallel) |
 
 **Note:** The Philosophy Squad is intentionally small. Deep thinking benefits from fewer voices and deeper exchanges, not broader teams. The Socratic lens on the Challenger differentiates this from the standard adversarial review — the Questioner seeks to deepen, not to defeat.
 

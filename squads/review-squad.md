@@ -41,7 +41,7 @@ Add when scope is broad or standards compliance is critical:
 |------|---------|------|-----------|------|-------|
 | Scrum Master | Scrum Master | operational | `general-purpose` | Specialist (sonnet) | Read, Write, Bash (no code edit) |
 
-Runs in parallel with all phases. Handles error catalog, crystallization protocol (update `memory/active/pattern-tracker.md` — read it, match this mission's candidates, increment counts, flag new PROMOTE candidates), issue tracking, and post-mission cleanup.
+Runs in parallel with all phases. Handles error catalog, crystallization protocol (update `memory/active/pattern-tracker.md` — read it, match this mission's candidates, increment counts, flag new PROMOTE candidates), Jira ops, and post-mission cleanup.
 
 ---
 
@@ -183,6 +183,17 @@ Mission: Review {PR/changes} for quality and safety.
 Write Commander's Intent to blackboard, assign sections, wait for traces,
 then synthesize using concurrent blind review protocol.
 
+## CRITICAL: Context Budget
+
+Initialize the budget tracker at session start:
+  bash scripts/context-budget.sh init facilitator --profile orchestrator
+
+After each major operation (reading all reviewer sections, synthesis):
+  bash scripts/context-budget.sh tick facilitator --files-read {bytes}
+
+Monitor all agents' budget status. At YELLOW: increase checkpoint frequency.
+At RED: decide relay strategy per protocols/return-to-sangha.md.
+
 ## CRITICAL: Shutdown Handling
 
 When you receive a message with type "shutdown_request", you MUST respond
@@ -205,6 +216,18 @@ Write findings ONLY to "## Review: Correctness" section on blackboard.
 DO NOT read other reviewers' sections.
 After writing findings, create trace: {mission}-correctness-reviewer-finding_submitted.trace
 
+## CRITICAL: Context Budget
+
+Initialize the budget tracker at session start:
+  bash scripts/context-budget.sh init correctness-reviewer --profile subagent
+
+After each major operation (file read, analysis):
+  bash scripts/context-budget.sh tick correctness-reviewer --files-read {bytes}
+
+At YELLOW: checkpoint immediately, increase write frequency.
+At RED: write final findings to blackboard, signal relay readiness to team lead.
+At CRITICAL: stop new work, re-read your checkpoint from the blackboard.
+
 ## CRITICAL: Shutdown Handling
 
 When you receive a message with type "shutdown_request", you MUST respond
@@ -226,6 +249,18 @@ Focus: OWASP top 10, input validation, SQL injection, secrets exposure, access c
 Write findings ONLY to "## Review: Security" section on blackboard.
 DO NOT read other reviewers' sections.
 After writing findings, create trace: {mission}-security-reviewer-finding_submitted.trace
+
+## CRITICAL: Context Budget
+
+Initialize the budget tracker at session start:
+  bash scripts/context-budget.sh init security-reviewer --profile subagent
+
+After each major operation (file read, analysis):
+  bash scripts/context-budget.sh tick security-reviewer --files-read {bytes}
+
+At YELLOW: checkpoint immediately, increase write frequency.
+At RED: write final findings to blackboard, signal relay readiness to team lead.
+At CRITICAL: stop new work, re-read your checkpoint from the blackboard.
 
 ## CRITICAL: Shutdown Handling
 

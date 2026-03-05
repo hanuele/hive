@@ -55,9 +55,25 @@ findings to proceed (e.g., regulatory analysis vs. financial data).
    Write retrospective to memory/archive/retrospectives/
 ```
 
+## Codified Patterns
+
+### Challenger/Contrarian Value (4 missions, CODIFIED 2026-03-05)
+Always include a contrarian/challenger lens in research squads — it produces the
+most actionable, non-obvious insights. Researcher B should be explicitly
+differentiated with a contrarian heuristic (see `differentiation/` docs).
+In planning squads, the Challenger should explicitly challenge pipeline ORDER,
+not just content.
+
+### Convergent Findings as Quality Signal (3 missions, CODIFIED 2026-03-05)
+When two investigators independently reach the same conclusion from different
+angles (without reading each other's findings during fan-out), the convergent
+finding should be weighted as **high-confidence** in synthesis. The Orchestrator
+must explicitly track and highlight convergence in the synthesis output —
+noting which findings converged and which were unique to one investigator.
+
 ## Decision Protocol
 
-**Quorum sensing.** Finding is confirmed when 2+ independent agents converge. Facilitator synthesizes but domain expert outweighs generalist.
+**Quorum sensing.** Finding is confirmed when 2+ independent agents converge. Facilitator synthesizes but domain expert outweighs generalist. **Convergent findings** (same conclusion reached independently by 2+ agents) are weighted as high-confidence — explicitly highlight these in synthesis output.
 
 See `constitutions/commitment-threshold.md` for quorum rules.
 
