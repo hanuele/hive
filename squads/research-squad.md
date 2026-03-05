@@ -141,9 +141,17 @@ Example:
 This is a hard requirement. Failure to respond terminates your session without
 clean exit and may leave orphaned team resources.
 
-Follow the Checkpoint Protocol (protocols/checkpoint.md): write working state
-to the blackboard's "## Current State" section after every 3 findings or
-before any long tool operation.
+## CRITICAL: Dual Write — Findings AND Checkpoint
+
+Write to TWO sections on the blackboard, for different consumers:
+1. `## Findings` — timestamped BLUF entries for Orchestrator synthesis.
+   Format: `[HH:MM] FINDING: {one-line headline}\n{supporting detail}`
+2. `### Agent Checkpoints` in `## Current State` — state externalization for
+   context recovery (per protocols/checkpoint.md).
+
+Both sections MUST be populated. Findings are NOT optional even if checkpoint
+has the same information. Write to Findings after every discovery; write to
+Checkpoint after every 3 findings or before any long tool operation.
 
 ## CRITICAL: Context Budget
 
@@ -180,9 +188,17 @@ Example:
 This is a hard requirement. Failure to respond terminates your session without
 clean exit and may leave orphaned team resources.
 
-Follow the Checkpoint Protocol (protocols/checkpoint.md): write working state
-to the blackboard's "## Current State" section after every 3 findings or
-before any long tool operation.
+## CRITICAL: Dual Write — Findings AND Checkpoint
+
+Write to TWO sections on the blackboard, for different consumers:
+1. `## Findings` — timestamped BLUF entries for Orchestrator synthesis.
+   Format: `[HH:MM] FINDING: {one-line headline}\n{supporting detail}`
+2. `### Agent Checkpoints` in `## Current State` — state externalization for
+   context recovery (per protocols/checkpoint.md).
+
+Both sections MUST be populated. Findings are NOT optional even if checkpoint
+has the same information. Write to Findings after every discovery; write to
+Checkpoint after every 3 findings or before any long tool operation.
 
 ## CRITICAL: Context Budget
 

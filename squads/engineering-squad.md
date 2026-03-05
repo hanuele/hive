@@ -28,7 +28,7 @@
 
 **Key:** No Orchestrator agent — human fills that role. 3 agents total (+ recommended Scrum Master in parallel).
 
-**Note:** Scrum Master runs in parallel with all phases, not in the trace dependency chain. Handles issue tracking, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), operational fixes, and **scaling monitoring** (see below). Spawning the Scrum Master is recommended for all missions — crystallization is the system's long-term learning mechanism.
+**Note:** Scrum Master runs in parallel with all phases, not in the trace dependency chain. Handles Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md` — read it, match this mission's candidates, increment counts, flag new PROMOTE candidates), operational fixes, and **scaling monitoring** (see below). Spawning the Scrum Master is recommended for all missions — crystallization is the system's long-term learning mechanism.
 
 ### Full Engineering
 
@@ -285,9 +285,8 @@ At CRITICAL: stop new work, re-read your checkpoint from the blackboard.""")
 
 During the mission, in addition to normal SM duties, the Scrum Master monitors:
 
-1. **Budget zones** — check all agents' context budget zones after each phase
-   transition and agent completion message.
-   `# {TOOL: run context budget tracker for all agents}`
+1. **Budget zones** — run `bash scripts/context-budget.sh render-all` after
+   each phase transition and agent completion message.
 2. **Queue imbalance** — check TaskList for any agent owning >5 pending unclaimed tasks.
 
 When either trigger fires:
@@ -352,6 +351,35 @@ Lens injection is done in the spawn prompt, not in the persona file:
 of the change plan. Implement exactly what was designed, documenting any
 necessary deviations. Prefer the simplest correct implementation."
 ```
+
+---
+
+## Codified Patterns
+
+### Plan-Driven Zero-Deviation
+*(Crystallized from 3 missions: kan229, lassonde-classification, kan242-ux-audit)*
+
+When the Designer produces a detailed change plan (function signatures, pseudocode,
+test cases, scope boundaries), the Implementer should execute it with zero deviations.
+Invest in the design phase — it pays for itself by making implementation mechanical
+and verification straightforward. The plan sets a floor, not a ceiling: the
+Implementer may add edge case tests but should not deviate from the specified approach.
+
+See: `memory/patterns/plan-driven-zero-deviation.md`
+
+### Review Phase Value
+*(Crystallized from 3 missions: kan229, lassonde-classification, kan242-ux-audit)*
+
+Always include a Review phase (Verifier agent) for changes that affect:
+- User-visible output
+- Exception-raising or error-handling paths
+- Core business logic (scoring, financial data)
+
+Skip Review only for purely cosmetic WARN-level changes with no external visibility.
+Reviewer findings are cheapest before merge — this pattern holds across Python,
+scoring, and UX domains.
+
+See: `memory/patterns/review-phase-value.md`
 
 ---
 

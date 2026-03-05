@@ -22,17 +22,45 @@ The Orchestrator aggregates — agents select. This distributes the learning fun
 
 Read `memory/active/pattern-tracker.md`. For each candidate pattern from this mission:
 - **If it already exists in the registry:** increment the count and add this mission's name.
-- **If it is new:** add a new row with count=1, the mission name, and discernment classification.
+- **If it is new:** add a row with count=1, the mission name, and discernment classification.
 
-Patterns that reach 3+ occurrences are documented using the pattern form:
+Patterns that reach 3+ occurrences are documented as a dedicated pattern file
+in `memory/patterns/{pattern-slug}.md` using this template:
 
 ```markdown
-## {Pattern Name}
-**Context:** When does this arise?
-**Problem:** What tension is this resolving?
-**Solution:** What does the pattern prescribe?
-**Consequences:** What does this enable? What does it foreclose?
+# Pattern: {Pattern Name}
+
+> Crystallization status: PROMOTE ({N} missions, pending human decision)
+
+## Context
+When does this arise?
+
+## Problem
+What tension is this resolving?
+
+## Evidence
+### {mission-1}
+What happened, one paragraph per mission. Include root cause.
+
+### {mission-2}
+...
+
+## Proposed Rule
+> The rule text, ready to be inserted into the target file.
+
+**Target file:** {where this rule would be codified}
+
+## Consequences
+**If approved:** What this enables, what cost it adds.
+**If rejected:** What continues to happen.
+
+## Retrospective References
+- `memory/archive/retrospectives/{mission-1}-retro.md`
+- ...
 ```
+
+The pattern file serves as permanent reference documentation. Link it from
+the PROMOTE Queue table in `pattern-tracker.md`.
 
 ### Step 2.5 — DISCERNMENT (Between PATTERN and PROMOTE)
 
@@ -55,7 +83,13 @@ Patterns validated across 3+ missions are proposed as rules. The proposal goes t
 
 When a pattern reaches the PROMOTE threshold:
 1. Add it to the tracker's **PROMOTE Queue** section with the proposed rule text.
-2. Create an issue in your project tracker (label: `hive-crystallization`) to track the human decision.
+2. Create a dedicated pattern file in `memory/patterns/{pattern-slug}.md` using
+   the template above, enriched with evidence from the retrospective files.
+3. Create a Jira ticket (label: `hive-crystallization`) to track the human decision.
+
+**Human presentation trigger:** PENDING patterns are automatically presented to
+the human when they invoke `/hive` (Step 0.7) or `/hive-resume` (Step 6.5).
+The pattern files provide the context needed for an informed decision.
 
 ### Step 4 — CODIFY (threshold: 5+ missions, human-approved)
 
@@ -75,6 +109,7 @@ When a human approves a PROMOTE candidate:
 
 - A retrospective file at `memory/archive/retrospectives/{mission-name}-retro.md`.
 - Updated `memory/active/pattern-tracker.md` with new/incremented patterns.
+- For 3+ occurrence patterns: a pattern file at `memory/patterns/{pattern-slug}.md`.
 
 ## Retrospective File Template
 
