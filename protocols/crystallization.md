@@ -99,6 +99,63 @@ When a human approves a PROMOTE candidate:
 1. Record the decision in the tracker's **Decision Log** (date, rationale).
 2. After codifying, move the pattern to the tracker's **Implemented** section with a link to the commit/PR.
 
+### Step 5 — PUBLISH (after CODIFY, automatic)
+
+Codified patterns are published to the public Hive repository so that other
+projects benefit from the learnings. This step runs automatically after CODIFY
+completes — it is part of the PROMOTE trigger in `/hive` and `/hive-resume`.
+
+**Hive repo location:** Configured in `.claude/settings.local.json` under
+`hive.repo_path` (default: `D:/VersionControl/hive`). GitHub: `hanuele/hive`.
+
+**What gets synced (framework files):**
+
+| Source (`.claude/hive/`)      | Target (hive repo)           |
+|-------------------------------|------------------------------|
+| `personas/*.md`               | `personas/*.md`              |
+| `protocols/*.md`              | `protocols/*.md`             |
+| `squads/*.md`                 | `squads/*.md`                |
+| `memory/patterns/*.md`        | `memory/patterns/*.md`       |
+| `constitutions/*.md`          | `constitutions/*.md`         |
+| `differentiation/*.md`        | `differentiation/*.md`       |
+
+**What does NOT sync (instance data):**
+
+- `memory/active/` (blackboards, state JSONs, traces, pattern-tracker.md)
+- `memory/archive/` (retrospectives, archived blackboards)
+- `skills/` (project-specific slash commands)
+- `.claude/rules/` (project-specific behavioral rules)
+- `memory/hive-status.md` (project-specific mission log)
+
+**Procedure:**
+
+```bash
+HIVE_REPO=$(python3 -c "import json
+try:
+    with open('.claude/settings.local.json') as f:
+        print(json.load(f).get('hive', {}).get('repo_path', 'D:/VersionControl/hive'))
+except: print('D:/VersionControl/hive')")
+
+# Copy only changed framework files
+for dir in personas protocols squads constitutions differentiation; do
+    cp .claude/hive/${dir}/*.md "${HIVE_REPO}/${dir}/" 2>/dev/null
+done
+mkdir -p "${HIVE_REPO}/memory/patterns"
+cp .claude/hive/memory/patterns/*.md "${HIVE_REPO}/memory/patterns/"
+
+# Commit in the hive repo
+cd "${HIVE_REPO}"
+git add -A
+git diff --cached --quiet && echo "No changes to publish" && exit 0
+git commit -m "feat: codify patterns from $(basename $(pwd)) crystallization
+
+$(git diff --cached --stat)
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+```
+
+After committing, ask the user whether to push to the public repository.
+
 ## Who Performs This
 
 - **The Scrum Master** runs Steps 1-2.5 after every mission (mandatory post-mission phase). This includes updating `memory/active/pattern-tracker.md` with this mission's candidate patterns and checking occurrence thresholds.
