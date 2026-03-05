@@ -205,7 +205,7 @@ See `constitutions/commitment-threshold.md` for general quorum rules (apply to f
 
 ## Design Notes
 
-- **Blind divergence is the core innovation.** Same principle as Review Squad's blind protocol — independent generation catches more diverse ideas than group brainstorming.
+- **Blind divergence is the core innovation and non-negotiable (CODIFIED 2026-03-05).** Same principle as Review Squad's blind protocol — independent generation catches more diverse ideas than group brainstorming. Innovators must NOT read peer ideas during DIVERGE. This is a first-class rule, not just a guideline.
 - **Iteration is optional but valuable.** If the diverge phase produces a clearly superior idea, skip straight to synthesis. Iteration is for promising-but-incomplete ideas.
 - **Innovator persona is central.** This is the primary squad for The Innovator. Other squads may include Innovators for specific creative subtasks, but the Creative Squad is built around them.
 - **The Evaluator is a Challenger, not an Architect.** Evaluation is about finding weaknesses, not designing solutions. The Innovator refines; the Challenger evaluates.

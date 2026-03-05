@@ -226,3 +226,5 @@ Scenario Builders may read each other during generation (unlike Research/Creativ
 - **Flexible scenario count.** The Orchestrator decides 2-4 based on uncertainty structure. Do not force a fixed number.
 - **Robust actions are the key output.** If the synthesis only has per-scenario actions and no robust ones, the mission has partially failed.
 - **Leading indicators are the second key output.** They turn static scenarios into a dynamic monitoring system.
+- **Premise Falsification overrides downstream analysis (CODIFIED 2026-03-05).** When a no-regret move or stress test definitively falsifies a premise, that finding takes primary status — all conclusions built on the false premise are invalidated.
+- **Component Extraction as Deliverable (CODIFIED 2026-03-05).** Response strategies should decompose into named, independently-actionable components with effort estimates. Include a Components table in the synthesis so Engineering squads can populate briefs directly.

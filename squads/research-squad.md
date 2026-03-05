@@ -71,6 +71,27 @@ finding should be weighted as **high-confidence** in synthesis. The Orchestrator
 must explicitly track and highlight convergence in the synthesis output —
 noting which findings converged and which were unique to one investigator.
 
+### Premise Falsification as Research Deliverable (3 missions, CODIFIED 2026-03-05)
+When a data or architectural check definitively proves a stated premise false,
+elevate this finding to **primary status** in synthesis — a falsified premise
+overrides all downstream analysis that assumed it true. The Orchestrator must
+flag falsified premises before presenting other findings, and note which
+conclusions are invalidated as a consequence.
+
+### Blind Divergence Protocol (3 missions, CODIFIED 2026-03-05)
+In fan-out phases, investigators must NOT read each other's output before
+submitting their findings. The convergence signal requires genuine independence.
+Post-submission, the Challenger (if present) reads all findings; synthesis follows.
+This is already enforced by the Productive Waiting exception but is now a
+first-class codified rule: **blind divergence is non-negotiable for fan-out**.
+
+### Component Extraction as Deliverable (3 missions, CODIFIED 2026-03-05)
+Research outputs should decompose findings into named, independently-actionable
+components with effort estimates where applicable. This enables downstream
+Engineering squads to populate their briefs without re-analyzing the research
+output. The synthesis section should include a **## Components** table listing
+each component, its scope, estimated effort, and dependencies.
+
 ## Decision Protocol
 
 **Quorum sensing.** Finding is confirmed when 2+ independent agents converge. Facilitator synthesizes but domain expert outweighs generalist. **Convergent findings** (same conclusion reached independently by 2+ agents) are weighted as high-confidence — explicitly highlight these in synthesis output.
