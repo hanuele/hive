@@ -82,6 +82,7 @@ Phase 4: BREATHING SPACE (Full Engineering only)
 Phase 5: IMPLEMENT
   Implementer reads change plan (and review feedback if Full Engineering)
   Implementer works in worktree — creates/modifies files per plan
+  Implementer creates test files for every new component (test gap = FAIL)
   Implementer writes trace: {mission}-implementer-implementation_complete.trace
   ↓
 Phase 6: VERIFY
@@ -219,6 +220,10 @@ clean exit and may leave orphaned team resources.
 Read the change plan from: .claude/hive/memory/active/blackboard/{mission}.md
 Work in the provided worktree or branch.
 
+IMPORTANT: For every NEW file you create, you MUST also create a corresponding
+test file. "No tests for new code" is a merge-blocking failure. List test files
+in your implementation notes on the blackboard.
+
 Follow the Checkpoint Protocol (protocols/checkpoint.md): write working state
 to the blackboard's "## Current State" section after every 3 findings or
 before any long tool operation.
@@ -259,7 +264,8 @@ clean exit and may leave orphaned team resources.
 
 1. Read the change plan from the blackboard
 2. Read the implemented changes
-3. Run the test suite: {PROJECT_TEST_COMMAND}
+3. Check that every NEW file has a corresponding test file (zero tests = FAIL, merge-blocking)
+4. Run the test suite: {PROJECT_TEST_COMMAND}
 <!-- DOMAIN: Replace {PROJECT_TEST_COMMAND} with your project's test command (e.g., docker-compose exec api-gateway pytest, npm test, cargo test) -->
 4. Check coding guidelines compliance
 5. Write results to blackboard under "## Verification"
@@ -380,6 +386,19 @@ Reviewer findings are cheapest before merge — this pattern holds across Python
 scoring, and UX domains.
 
 See: `memory/patterns/review-phase-value.md`
+
+### Test Gap as First-Class Finding
+*(Crystallized from 3 missions: kan-263-hexgeo, kan-265-hexreview, kan-185-assaygrid)*
+
+When the Verifier finds zero test coverage for a newly created component (a file
+that did not exist before this mission), classify it as **FAIL** severity —
+merge-blocking, same as a bug. Test gaps are not warnings; they block merge.
+
+The Designer's change plan must list expected test files in the "Files to Modify"
+table alongside implementation files. The Implementer must create test files for
+every new component. "No tests for new code" is never acceptable as a soft finding.
+
+See: `memory/patterns/test-gap-as-first-class-finding.md`
 
 ---
 

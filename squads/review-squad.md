@@ -144,9 +144,13 @@ Each reviewer uses this format for consistency:
 ```
 
 Severity levels (per Challenger persona):
-- **CRITICAL** — Blocks merge. Bug, security vulnerability, data loss risk.
-- **WARNING** — Should fix before merge. Code smell, missing test, guideline violation.
+- **CRITICAL** — Blocks merge. Bug, security vulnerability, data loss risk, **zero test coverage for new components**.
+- **WARNING** — Should fix before merge. Code smell, incomplete test coverage, guideline violation.
 - **INFO** — Nice to have. Style preference, minor improvement, documentation note.
+
+> **Codified Pattern — Test Gap as First-Class Finding:** When a new component
+> has zero test coverage, classify as CRITICAL (not WARNING). Test gaps for new
+> code block merge just as bugs do. See `memory/patterns/test-gap-as-first-class-finding.md`.
 
 ---
 
