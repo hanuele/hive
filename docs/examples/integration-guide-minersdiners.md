@@ -1,6 +1,8 @@
-# Hive Integration Guide
+# Hive Integration Guide — MinersDiners (Example)
 
-> How and when to use Hive squads in your development workflow.
+> This is a project-specific example. For the generic guide, see the root `integration-guide.md`.
+
+> How and when to use Hive squads in the MinersDiners development workflow.
 
 ## Decision Framework: Solo vs. Squad
 
@@ -31,34 +33,34 @@ Hive missions use a 4-tier partnership escalation chain. See `protocols/escalati
 
 Use when exploring something new before implementing. High-uncertainty, knowledge-gathering missions.
 
-**Trigger:** Tickets with labels indicating domain complexity or data gaps where acceptance criteria aren't yet clear.
+**Trigger:** Jira tickets with labels `domain-knowledge`, `domain-intelligence`, or `data-gap` where acceptance criteria aren't yet clear.
 
 **Examples:**
 - New data source evaluation (API capability vs. data quality/coverage gaps)
-- Domain methodology edge cases (scoring ambiguities, classification boundaries)
-- Technology evaluation (comparing options before committing)
+- Lassonde Curve refinements (mapping theory to actual data fields)
+- Durrett methodology edge cases (scoring ambiguities)
 
 ### 2. Engineering Squad — Multi-Service Features
 
-Use when building features that touch multiple services or modules. Focused Build (3 agents, human as Orchestrator) is cost-effective for narrow scope. Full Engineering (4 agents) for broad scope.
+Use when building features that touch multiple microservices. Focused Build (3 agents, human as Orchestrator) is cost-effective for narrow scope. Full Engineering (4 agents) for broad scope.
 
-**Trigger:** Tickets touching 3+ services or requiring changes across multiple architectural layers.
+**Trigger:** Jira tickets touching 3+ services or requiring changes across data-extraction, analysis-engine, and visualization.
 
 **Examples:**
-- New data pipeline + validation + API endpoint
+- New scraper + validation + API endpoint
 - Database migration + service changes
-- Cross-cutting feature spanning multiple modules
+- COMEX Silver Monitor (KAN-201) — new pipeline + analysis + dashboard
 
 ### 3. Review Squad — High-Stakes Quality Gate
 
 Use for independent quality assessment before merging significant changes.
 
-**Trigger:** PRs with labels indicating database, security, or validation concerns, or PRs touching core business logic.
+**Trigger:** PRs with labels `database`, `security`, or `validation`, or PRs touching `shared/database/` or scoring formulas.
 
 **Examples:**
 - Pre-release review (audit diff since last release)
 - Security-sensitive changes (auth, API keys, credentials)
-- Core formula or scoring changes (affect business decisions)
+- Scoring formula changes (affect investment decisions)
 
 ### 4. Creative Squad — Idea Generation
 
@@ -107,7 +109,7 @@ Use when a task is too large for a single squad. Decomposes initiatives into seq
 ## Workflow Integration
 
 ```
-1. Pick {ISSUE_TRACKER} ticket
+1. Pick Jira ticket
 2. Assess terrain (4 axes from terrain/analysis-axes.md)
    ├── Low uncertainty, narrow → Work solo (existing workflow)
    └── High uncertainty OR broad → Spawn Hive mission
@@ -126,15 +128,13 @@ The Hive layers on top — it doesn't replace existing single-purpose agents:
 
 | Existing Agent | Still Use For | Squad Alternative (When) |
 |---------------|---------------|-------------------------|
-| Code reviewer | Standard PRs | Review Squad → high-stakes PRs |
-| Codebase explorer | Quick codebase questions | Research Squad → deep domain investigation |
-| Test runner | After code changes | Engineering Squad Verifier → coordinated build+test |
-| Migration specialist | Migration risk assessment | Engineering Squad Designer → plans migration as part of broader feature |
-| Deploy coordinator | Deployment pipeline | N/A — deployment stays as single-agent workflow |
+| `reviewer` | Standard PRs | Review Squad → high-stakes PRs |
+| `explorer` | Quick codebase questions | Research Squad → deep domain investigation |
+| `test-runner` | After code changes | Engineering Squad Verifier → coordinated build+test |
+| `migration-guardian` | Migration risk assessment | Engineering Squad Designer → plans migration as part of broader feature |
+| `deploy-coordinator` | Deployment pipeline | N/A — deployment stays as single-agent workflow |
 
-> Customize this table for your project's existing agents.
-
-## {ISSUE_TRACKER} Convention
+## Jira Convention
 
 Add a terrain assessment to ticket comments when picking up a ticket:
 
@@ -160,7 +160,7 @@ When a session breaks mid-mission, blackboards and batons persist on disk. Use `
 | State | What happened | Action |
 |-------|--------------|--------|
 | CLEANUP_ONLY | Mission completed, blackboard not archived | Auto-archive blackboard + traces |
-| COMPLETE_NEEDS_CLEANUP | Synthesis done, but retro/ticket/session log missing | Run remaining cleanup protocols, then archive |
+| COMPLETE_NEEDS_CLEANUP | Synthesis done, but retro/Jira/session log missing | Run remaining cleanup protocols, then archive |
 | INCOMPLETE | Mission interrupted mid-work | Read baton, re-spawn squad with RESUMPTION CONTEXT |
 
 The `/hive` skill also warns about active missions before launching new ones.

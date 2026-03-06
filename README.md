@@ -186,7 +186,7 @@ hive/
 │   ├── stigmergy-traces.md      #   Environment-based coordination
 │   ├── crystallization.md       #   Learning spiral (observe → pattern → codify)
 │   ├── breathing-space.md       #   The pause between gathering and concluding
-│   ├── escalation-rules.md      #   L1–L5 failure escalation
+│   ├── escalation-rules.md      #   Tier 1–3b partnership escalation chain
 │   ├── agent-shutdown.md        #   Graceful termination protocol
 │   ├── checkpoint.md            #   Progress checkpoints
 │   ├── briefing.md              #   Agent onboarding to mission
@@ -195,7 +195,10 @@ hive/
 │   ├── bluf-format.md           #   Bottom Line Up Front communication
 │   ├── synthesis-template.md    #   How to aggregate findings
 │   ├── failure-taxonomy.md      #   Classifying what went wrong
-│   └── insufficient-basis.md    #   When "we don't know" is the answer
+│   ├── insufficient-basis.md    #   When "we don't know" is the answer
+│   ├── definition-of-done.md    #   Mission completion checklists (solo + squad)
+│   ├── dynamic-scaling.md       #   Horizontal worker scaling mid-mission
+│   └── return-to-sangha.md      #   Context renewal: Living Baton + Budget Tracker
 │
 ├── terrain/                     # Mission assessment framework
 │   ├── analysis-axes.md         #   4 axes: Uncertainty, Reversibility, Breadth, Stakes
@@ -215,8 +218,15 @@ hive/
 │   │   ├── blackboard/          #   Mission blackboards (one per active mission)
 │   │   │   └── _template.md     #   Blackboard template
 │   │   ├── error-catalog.md     #   Known error patterns
+│   │   ├── pattern-tracker.md   #   Cross-mission pattern observation registry
 │   │   ├── manifests/           #   Mission manifests
 │   │   └── traces/              #   Agent activity traces
+│   ├── patterns/                #   Crystallized pattern files
+│   │   ├── commanders-intent-quality-gate.md
+│   │   ├── findings-vs-checkpoint-drift.md
+│   │   ├── plan-driven-zero-deviation.md
+│   │   ├── review-phase-value.md
+│   │   └── test-gap-as-first-class-finding.md
 │   └── archive/
 │       ├── blackboard/          #   Completed mission blackboards
 │       ├── traces/              #   Completed mission traces
@@ -239,9 +249,11 @@ hive/
 │   └── skills/                  #   Genericized skills for .claude/skills/
 │
 ├── scripts/
-│   └── bootstrap.sh             #   One-command integration script
+│   ├── bootstrap.sh             #   One-command integration script
+│   └── context-budget.sh        #   Context budget tracker (stub — implement per-project)
 │
 └── docs/
+    ├── examples/                #   Project-specific integration examples
     ├── example-mission/         #   Complete worked example (blackboard + retro)
     ├── origin/                  #   The complete origin story
     │   ├── v1-foundation.md     #     Research phase

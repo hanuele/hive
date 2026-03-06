@@ -24,6 +24,10 @@ and propose a squad to the user before starting solo.
 | High uncertainty, need to learn | Research (`.claude/hive/squads/research-squad.md`) |
 | Cross-service build, known requirements | Engineering (`.claude/hive/squads/engineering-squad.md`) |
 | High-stakes review (DB, security, critical logic) | Review (`.claude/hive/squads/review-squad.md`) |
+| Need novel ideas or design alternatives | Creative (`.claude/hive/squads/creative-squad.md`) |
+| Decisions with multiple plausible futures | Strategy (`.claude/hive/squads/strategy-squad.md`) |
+| Conceptual ambiguity, deep understanding | Philosophy (`.claude/hive/squads/philosophy-squad.md`) |
+| Initiative too large for a single squad | Management (`.claude/hive/squads/management-squad.md`) |
 
 ## {ISSUE_TRACKER} Labels That Always Trigger Assessment
 

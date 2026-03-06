@@ -46,7 +46,7 @@ fixes don't need mission evidence — just clear writing.
 
 ### Add New Personas or Squads
 
-The `_deferred/` directories contain squad stubs waiting to be developed. If
+All seven squad types are now implemented. If
 you've run missions that suggest a new squad type or persona, open a PR with:
 
 - The persona or squad file following the existing format

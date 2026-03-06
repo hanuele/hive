@@ -47,6 +47,15 @@ The Scrum Master persona contains placeholder fields for project-specific toolin
 | `{ISSUE_TRACKER_CLI}` | CLI tool for issue tracker operations |
 | `{TEST_COMMAND}` | Your project's test runner command |
 | `{MIGRATION_CHECK}` | Command to verify migration/schema status |
+| `{TASK_TRACKER_SCRIPT}` | Path to task tracker CLI wrapper (e.g., `scripts/jira-api.sh`) |
+| `{CREDENTIAL_1_NAME}` | First credential env var for task tracker (e.g., `JIRA_EMAIL`) |
+| `{CREDENTIAL_2_NAME}` | Second credential env var for task tracker (e.g., `JIRA_API_TOKEN`) |
+| `{TASK_STATUS_TODO}` | Tracker's "To Do" status name (e.g., "Zu erledigen", "To Do") |
+| `{TASK_STATUS_IN_PROGRESS}` | Tracker's "In Progress" status name (e.g., "In Arbeit", "In Progress") |
+| `{TASK_STATUS_DONE}` | Tracker's "Done" status name (e.g., "Erledigt", "Done") |
+| `{AGENT_EPIC_KEY}` | Epic/parent key for agent-created tickets (e.g., `KAN-140`) |
+| `{MIGRATION_CHECK_COMMAND}` | Command to verify migration/schema state (e.g., `docker exec app alembic current`) |
+| `{TICKET_PREFIX}` | Ticket key prefix including dash (e.g., `KAN-`, `PROJ-`) |
 
 ### 4. Commander's Intent Customization
 
