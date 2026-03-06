@@ -24,13 +24,18 @@
 | **Ideator A** | Innovator | Specialist (sonnet) | Independent idea generation (diverge phase) |
 | **Ideator B** | Innovator (different heuristic) | Specialist (sonnet) | Independent idea generation from different angle |
 | **Evaluator** | Challenger | Specialist (sonnet) | Ranks ideas against criteria, stress-tests selected ideas |
-| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), operational fixes (parallel) |
+| **Scrum Master** (required) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), DoD preflight/cleanup (`protocols/definition-of-done.md`), operational fixes (parallel) |
 
 Optional: A third Ideator (Innovator with contrarian or analogical heuristic) for maximum divergence.
 
 ## Orchestration Pattern: Hybrid (Diamond + Iteration)
 
 ```
+SM PREFLIGHT (parallel, before Phase 1):
+  Scrum Master runs DoD preflight per protocols/definition-of-done.md:
+  Check ticket + ACs, extract ACs to blackboard, set ticket status.
+  This runs in parallel — does not block Phase 1.
+  ↓
 Phase 1: FRAME
   Orchestrator writes creative brief to blackboard:
   - Problem statement (what we're solving)
@@ -200,6 +205,17 @@ See `constitutions/commitment-threshold.md` for general quorum rules (apply to f
 | Iterate | No convergence after 2 cycles | Escalate per escalation-rules.md (Tier 3a) |
 
 **Max iteration cycles:** 2. If refinement stalls, the Orchestrator selects the best available version and documents limitations.
+
+---
+
+## Definition of Done
+
+This squad follows `protocols/definition-of-done.md`.
+Default level: `mission-complete` (override in Commander's Intent).
+
+The Scrum Master runs the Preflight checklist before Phase 1 (FRAME).
+The Facilitator verifies ACs against creative output during Phase 6 (SYNTHESIZE).
+The Scrum Master runs the Cleanup checklist after the mission retrospective.
 
 ---
 

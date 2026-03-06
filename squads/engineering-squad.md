@@ -24,11 +24,15 @@
 | Designer | Architect | — | `general-purpose` | Specialist (sonnet) | Read-only |
 | Implementer | Architect | operator | `general-purpose` | Operator (sonnet) | Full (Read, Write, Edit, Bash) |
 | Verifier | Challenger | correctness | `general-purpose` | Specialist (sonnet) | Read, Bash |
-| Scrum Master (recommended) | Scrum Master | operational | `general-purpose` | Specialist (sonnet) | Read, Write, Bash (no code edit) |
+| Scrum Master (required) | Scrum Master | operational | `general-purpose` | Specialist (sonnet) | Read, Write, Bash (no code edit) |
 
-**Key:** No Orchestrator agent — human fills that role. 3 agents total (+ recommended Scrum Master in parallel).
+**Key:** No Orchestrator agent — human fills that role. 3 agents + Scrum Master (in parallel).
 
-**Note:** Scrum Master runs in parallel with all phases, not in the trace dependency chain. Handles Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md` — read it, match this mission's candidates, increment counts, flag new PROMOTE candidates), operational fixes, and **scaling monitoring** (see below). Spawning the Scrum Master is recommended for all missions — crystallization is the system's long-term learning mechanism.
+**Note:** Scrum Master runs in parallel with all phases, not in the trace dependency chain. Handles Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md` — read it, match this mission's candidates, increment counts, flag new PROMOTE candidates), mission cleanup (archive traces, blackboard, state), operational fixes, **DoD preflight/cleanup** (see `protocols/definition-of-done.md`), and **scaling monitoring** (see below). The Scrum Master is required for all missions — crystallization and cleanup are the system's long-term learning and hygiene mechanisms.
+
+**SM Preflight (before Phase 1):** Check ticket exists for mission (WARN if missing, don't block). Check ticket has ACs (WARN if missing). Extract ACs and write to blackboard `## Acceptance Criteria`. Set ticket to "In Progress", fill start date.
+
+**SM Cleanup (post-mission):** Create session log, update handoff doc, update ticket (comment + due date). Existing: archive blackboard/traces, retrospective.
 
 ### Full Engineering
 
@@ -41,15 +45,20 @@
 | Reviewer | Challenger | — | `general-purpose` | Specialist (sonnet) | Read-only |
 | Implementer | Architect | operator | `general-purpose` | Operator (sonnet) | Full (Read, Write, Edit, Bash) |
 | Verifier | Challenger | correctness | `general-purpose` | Specialist (sonnet) | Read, Bash |
-| Scrum Master (recommended) | Scrum Master | operational | `general-purpose` | Specialist (sonnet) | Read, Write, Bash (no code edit) |
+| Scrum Master (required) | Scrum Master | operational | `general-purpose` | Specialist (sonnet) | Read, Write, Bash (no code edit) |
 
-**Key:** Orchestrator manages pipeline. Reviewer challenges design before implementation. 4-5 agents total (+ recommended Scrum Master in parallel).
+**Key:** Orchestrator manages pipeline. Reviewer challenges design before implementation. 4-5 agents + Scrum Master (in parallel).
 
 ---
 
 ## Orchestration: Sequential Pipeline with Trace-Based Gating
 
 ```
+SM PREFLIGHT (parallel, before Phase 1):
+  Scrum Master runs DoD preflight per protocols/definition-of-done.md:
+  Check ticket + ACs, extract ACs to blackboard, set ticket status.
+  This runs in parallel — does not block Phase 0 or Phase 1.
+  ↓
 Phase 0: PARALLELIZATION ANALYSIS  (Full Engineering — Orchestrator only)
   Before spawning any agents:
   1. Write initial task decomposition to TaskList
@@ -267,8 +276,17 @@ clean exit and may leave orphaned team resources.
 3. Check that every NEW file has a corresponding test file (zero tests = FAIL, merge-blocking)
 4. Run the test suite: {PROJECT_TEST_COMMAND}
 <!-- DOMAIN: Replace {PROJECT_TEST_COMMAND} with your project's test command (e.g., docker-compose exec api-gateway pytest, npm test, cargo test) -->
-4. Check coding guidelines compliance
-5. Write results to blackboard under "## Verification"
+5. Check coding guidelines compliance
+6. Read ticket ACs from blackboard (SM extracts them during preflight)
+7. Write structured AC checklist to blackboard:
+   ## Acceptance Criteria Verification
+   Source: {TICKET-ID}
+   - [x] AC text (PASS)
+   - [ ] AC text (FAIL -- reason)
+8. If mission created a DB migration: run upgrade/downgrade/upgrade cycle
+9. If diff touches Dockerfile/requirements/docker-compose/shared:
+   run docker build + health checks
+10. Write results to blackboard under "## Verification"
 
 After completing verification, write a trace file.
 
@@ -399,6 +417,17 @@ table alongside implementation files. The Implementer must create test files for
 every new component. "No tests for new code" is never acceptable as a soft finding.
 
 See: `memory/patterns/test-gap-as-first-class-finding.md`
+
+---
+
+## Definition of Done
+
+This squad follows `protocols/definition-of-done.md`.
+Default level: `mission-complete` (override in Commander's Intent).
+
+The Scrum Master runs the Preflight checklist before Phase 1 (FRAME).
+The Verifier runs the Verification checklist during Phase 6 (VERIFY).
+The Scrum Master runs the Cleanup checklist after the mission retrospective.
 
 ---
 

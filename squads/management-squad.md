@@ -25,9 +25,9 @@
 | **Facilitator** | Orchestrator | Orchestrator (opus) | Frames initiative, synthesizes execution plan |
 | **Decomposer** | Architect | Specialist (sonnet) | Breaks initiative into squad-sized missions, maps dependencies |
 | **Risk Reviewer** | Challenger | Specialist (sonnet) | Identifies cross-mission risks, resource bottlenecks, irreversibility points |
-| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), operational fixes (parallel) |
+| **Scrum Master** (required) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), DoD preflight/cleanup (`protocols/definition-of-done.md`), operational fixes (parallel) |
 
-**Key:** 3 agents (+ recommended SM). Produces a plan document. Human executes. Cost-effective for most multi-squad needs.
+**Key:** 3 agents + SM. Produces a plan document. Human executes. Cost-effective for most multi-squad needs.
 
 ### Full Orchestration
 
@@ -38,9 +38,9 @@
 | **Meta-Orchestrator** | Orchestrator | Orchestrator (opus) | Plans, sequences, spawns sub-squads, manages handoffs, integrates outputs |
 | **Decomposer** | Architect | Specialist (sonnet) | Breaks initiative into missions, designs handoff contracts |
 | **Monitor** | Challenger (monitoring lens) | Specialist (sonnet) | Watches for budget escalations, blocked dependencies, scope drift, conflicts |
-| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), operational fixes (parallel) |
+| **Scrum Master** (required) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), DoD preflight/cleanup (`protocols/definition-of-done.md`), operational fixes (parallel) |
 
-**Key:** 3 agents (+ recommended SM) plus sub-squads spawned at runtime. Expensive but powerful for large initiatives. The Meta-Orchestrator is one level above individual squad Orchestrators.
+**Key:** 3 agents + SM plus sub-squads spawned at runtime. Expensive but powerful for large initiatives. The Meta-Orchestrator is one level above individual squad Orchestrators.
 
 **Escalation path:** Start with Focused Planning. Only escalate to Full Orchestration when the human finds manual squad launching is becoming the bottleneck. "Prove you need the complexity."
 
@@ -49,6 +49,11 @@
 ## Orchestration Pattern: Focused Planning
 
 ```
+SM PREFLIGHT (parallel, before Phase 1):
+  Scrum Master runs DoD preflight per protocols/definition-of-done.md:
+  Check ticket + ACs, extract ACs to blackboard, set ticket status.
+  This runs in parallel — does not block Phase 1.
+  ↓
 Phase 1: FRAME
   Orchestrator writes initiative brief to blackboard:
   - Initiative goal (what the combined squads should achieve)
@@ -102,6 +107,9 @@ Phase 7: CRYSTALLIZATION
 ## Orchestration Pattern: Full Orchestration
 
 ```
+SM PREFLIGHT (parallel, before Phase 1):
+  (same as Focused Planning — SM runs DoD preflight)
+  ↓
 Phase 1: FRAME
   Meta-Orchestrator writes initiative brief to blackboard
   (same as Focused Planning Phase 1)
@@ -270,6 +278,17 @@ Management Squad uses the standard blackboard template with these additional sec
 | Integrate | Outputs from sub-squads contradict | L3a: Meta-Orchestrator synthesizes with documented disagreement |
 
 **Max retry cycles:** 1 per phase. If retry fails, escalate per escalation-rules.md.
+
+---
+
+## Definition of Done
+
+This squad follows `protocols/definition-of-done.md`.
+Default level: `mission-complete` (override in Commander's Intent).
+
+The Scrum Master runs the Preflight checklist before Phase 1 (FRAME).
+The Facilitator verifies ACs against the execution plan during Phase 6 (SYNTHESIZE).
+The Scrum Master runs the Cleanup checklist after the mission retrospective.
 
 ---
 

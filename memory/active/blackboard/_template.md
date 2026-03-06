@@ -31,6 +31,19 @@ contraction even when conversation history does not. Write here early and often.
 <!-- Write working state here per protocols/checkpoint.md.
      Overwrite your previous checkpoint — only the latest matters. -->
 
+## Acceptance Criteria
+<!-- Written by Scrum Master during preflight. Extracted from ticket.
+     Format: numbered list of ACs from the ticket.
+     If no ticket exists, SM writes WARN and leaves this section empty. -->
+
+## Acceptance Criteria Verification
+<!-- Written by Verifier (Engineering) or Facilitator (other squads) during verification phase.
+     Format:
+     Source: {TICKET-ID}
+     - [x] AC text (PASS)
+     - [ ] AC text (FAIL - reason)
+-->
+
 ## Findings
 
 [Agents append findings here. Format:]
@@ -90,3 +103,50 @@ The most dangerous assumptions are the ones no one has named.]
 - **Unclaimed tasks:** [{task-id}, {task-id}, ...]
 - **Orchestrator response:** (filled by Orchestrator when acted on)
 -->
+
+## Relay Baton
+<!-- Written by Orchestrator (Hive) or solo agent.
+     Updated on every meaningful event — decisions, findings, phase transitions.
+     A fresh agent who has never seen this conversation should be able to resume
+     from this section alone. See protocols/return-to-sangha.md. -->
+
+### Mission Context
+<!-- One-line summary: what this mission is about and why it exists -->
+
+### Current Phase
+<!-- What we are doing right now and why -->
+
+### Commander's Intent (Compressed)
+<!-- 2-3 sentence distillation of the full Commander's Intent above -->
+
+### Decisions Made
+<!-- Numbered list of decisions with rationale.
+     Format: {decision} — {rationale} -->
+
+### Key Findings (Distilled)
+<!-- Top findings relevant to continuation.
+     Not a copy of ## Findings — a curated summary for relay. -->
+
+### What Was Tried and Failed
+<!-- Approaches that did not work and why. Prevents the next agent from
+     repeating failed experiments. -->
+
+### Open Questions
+<!-- Unresolved items that the next agent should address -->
+
+### Next Steps
+<!-- Ordered list of what to do next.
+     1. {immediate action}
+     2. {after that} -->
+
+### Files Modified
+<!-- List of files changed during this mission, with brief description -->
+
+### State Machine
+<!-- Rendered by Scrum Master from memory/active/{mission}-state.json.
+     Format: table with Level | Name | State columns.
+     See protocols/return-to-sangha.md for state definitions. -->
+
+### Budget Status
+<!-- Latest budget tracker output for all active agents.
+     Updated by Scrum Master. -->

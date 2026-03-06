@@ -17,6 +17,16 @@ See `.claude/skills/hive-resume/SKILL.md`.
 
 ## Checklist
 
+### 0. Session Documentation (DoD Cleanup)
+
+Before archiving, ensure the DoD cleanup items from `protocols/definition-of-done.md` are done:
+
+1. **Session log** — Create a session log entry documenting what was accomplished
+2. **Handoff doc** — Update handoff documentation with date, branch, ticket, status summary
+3. **Ticket** — Add comment summarizing what was committed, set due date if transitioning to done
+
+These must happen before archival because the blackboard content (needed for the session log summary) will be moved to the archive in the next steps.
+
 ### 1. Archive Traces
 
 ```bash

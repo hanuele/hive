@@ -25,11 +25,16 @@ findings to proceed (e.g., regulatory analysis vs. financial data).
 | **Researcher A** | Investigator | Specialist (sonnet) | Data gathering, source triangulation |
 | **Researcher B** | Investigator (contrarian lens) | Specialist (sonnet) | Alternative hypotheses, assumption checking |
 | **Critic** (optional) | Challenger | Specialist | Adversarial review before synthesis |
-| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol, operational fixes (parallel) |
+| **Scrum Master** (required) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol, DoD preflight/cleanup (`protocols/definition-of-done.md`), operational fixes (parallel) |
 
 ## Orchestration Pattern
 
 ```
+0. SM PREFLIGHT (parallel, before step 1):
+   Scrum Master runs DoD preflight per protocols/definition-of-done.md:
+   Check ticket + ACs, extract ACs to blackboard, set ticket status.
+   This runs in parallel — does not block step 1.
+   ↓
 1. Orchestrator writes Commander's Intent + Mission Gatha to blackboard
    (see protocols/commanders-intent.md)
 
@@ -54,6 +59,17 @@ findings to proceed (e.g., regulatory analysis vs. financial data).
    Run protocols/crystallization.md (Steps 1-2.5)
    Write retrospective to memory/archive/retrospectives/
 ```
+
+## Definition of Done
+
+This squad follows `protocols/definition-of-done.md`.
+Default level: `mission-complete` (override in Commander's Intent).
+
+The Scrum Master runs the Preflight checklist before Phase 1 (FRAME).
+The Facilitator verifies ACs against research findings during Synthesis (step 5).
+The Scrum Master runs the Cleanup checklist after the mission retrospective.
+
+---
 
 ## Codified Patterns
 
@@ -259,17 +275,26 @@ Your mission: [paste Commander's Intent]
 You run IN PARALLEL with all other agents. You are NOT in the trace
 dependency chain. Your responsibilities:
 
-1. MISSION START: Read error catalog, pre-warn team about relevant ERR entries
+1. PREFLIGHT (before Phase 1): Run DoD preflight per protocols/definition-of-done.md:
+   - Check ticket exists for mission (WARN if missing, don't block)
+   - Check ticket has acceptance criteria (WARN if missing)
+   - Extract ACs to blackboard ## Acceptance Criteria section
+   - Set ticket to "In Progress", fill start date
+   - Read error catalog, pre-warn team about relevant ERR entries
 2. DURING MISSION: Monitor for failures, log crystallization_candidate events
    to events.jsonl for significant findings
-3. POST-MISSION: Run Crystallization Protocol Steps 1-2.5:
+3. POST-MISSION CLEANUP: Run DoD cleanup per protocols/definition-of-done.md:
+   - Create session log
+   - Update handoff doc
+   - Update ticket (comment + due date)
+4. POST-MISSION CRYSTALLIZATION: Run Crystallization Protocol Steps 1-2.5:
    - HARVEST: Collect crystallization candidates from events.jsonl + blackboard
    - PATTERN: Update `memory/active/pattern-tracker.md` — read it, match this
      mission's candidates, increment counts, flag new PROMOTE candidates
    - DISCERNMENT: For patterns at 3+ occurrences, classify as
      seed-to-water / seed-to-let-rest / seed-we-don't-understand
    - Write PROMOTE proposals (if any) to blackboard ## Operational Status
-4. CLEANUP: Run protocols/mission-cleanup.md (archive traces + blackboard)
+5. CLEANUP: Run protocols/mission-cleanup.md (archive traces + blackboard)
 
 Write ONLY to "## Operational Status" on the blackboard.
 

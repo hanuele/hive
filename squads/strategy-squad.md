@@ -26,7 +26,7 @@
 | **Scenario Builder C** (optional) | Investigator | Specialist (sonnet) | Third scenario (for 3+ uncertainty axes) |
 | **Stress Tester** | Challenger | Specialist (sonnet) | Attacks each scenario for consistency, blind spots, hidden assumptions |
 | **Response Designer** | Architect | Specialist (sonnet) | Designs response strategies per scenario (what would we do if...) |
-| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), operational fixes (parallel) |
+| **Scrum Master** (required) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), DoD preflight/cleanup (`protocols/definition-of-done.md`), operational fixes (parallel) |
 
 ### Scaling by Scenario Count
 
@@ -45,6 +45,11 @@ Orchestrator decides scenario count based on the number and nature of key uncert
 ## Orchestration Pattern: Scenario Planning
 
 ```
+SM PREFLIGHT (parallel, before Phase 1):
+  Scrum Master runs DoD preflight per protocols/definition-of-done.md:
+  Check ticket + ACs, extract ACs to blackboard, set ticket status.
+  This runs in parallel — does not block Phase 1.
+  ↓
 Phase 1: FRAME
   Orchestrator writes strategic brief to blackboard:
   - Strategic question (what decision are we trying to inform?)
@@ -216,6 +221,17 @@ Scenario Builders may read each other during generation (unlike Research/Creativ
 | Synthesis | No robust actions found | Escalate per escalation-rules.md (Tier 3b for irreversible strategy) |
 
 **Max retry cycles:** 1 per phase. If the retry fails, escalate.
+
+---
+
+## Definition of Done
+
+This squad follows `protocols/definition-of-done.md`.
+Default level: `mission-complete` (override in Commander's Intent).
+
+The Scrum Master runs the Preflight checklist before Phase 1 (FRAME).
+The Facilitator verifies ACs against strategic recommendation during Phase 6 (SYNTHESIZE).
+The Scrum Master runs the Cleanup checklist after the mission retrospective.
 
 ---
 

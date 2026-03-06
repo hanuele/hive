@@ -23,7 +23,7 @@
 | Correctness Reviewer | Challenger | correctness | `general-purpose` | Specialist (sonnet) | Read-only + Bash (for running tests) |
 | Security Reviewer | Challenger | security | `general-purpose` | Specialist (sonnet) | Read-only |
 
-**3 agents + recommended Scrum Master. Orchestrator frames + synthesizes. Two Challengers review independently and blindly.**
+**3 agents + required Scrum Master. Orchestrator frames + synthesizes. Two Challengers review independently and blindly.**
 
 ### Extended Review
 
@@ -33,21 +33,30 @@ Add when scope is broad or standards compliance is critical:
 |------|---------|------|-----------|------|-------|
 | Standards Reviewer | Challenger | standards | `general-purpose` | Specialist (sonnet) | Read-only |
 
-**4 agents + recommended Scrum Master. Third reviewer focuses on coding guidelines, naming conventions, documentation quality.**
+**4 agents + required Scrum Master. Third reviewer focuses on coding guidelines, naming conventions, documentation quality.**
 
-### Scrum Master (Recommended — All Variants)
+### Scrum Master (Required — All Variants)
 
 | Role | Persona | Lens | Agent Type | Tier | Tools |
 |------|---------|------|-----------|------|-------|
 | Scrum Master | Scrum Master | operational | `general-purpose` | Specialist (sonnet) | Read, Write, Bash (no code edit) |
 
-Runs in parallel with all phases. Handles error catalog, crystallization protocol (update `memory/active/pattern-tracker.md` — read it, match this mission's candidates, increment counts, flag new PROMOTE candidates), Jira ops, and post-mission cleanup.
+Runs in parallel with all phases. Handles error catalog, crystallization protocol (update `memory/active/pattern-tracker.md` — read it, match this mission's candidates, increment counts, flag new PROMOTE candidates), Jira ops, DoD preflight/cleanup (see `protocols/definition-of-done.md`), and post-mission cleanup.
+
+**SM Preflight (before Phase 1):** Check ticket exists (WARN if missing). Check ticket has ACs (WARN if missing). Extract ACs to blackboard `## Acceptance Criteria`. Set ticket to "In Progress", fill start date.
+
+**SM Cleanup (post-mission):** Create session log, update handoff doc, update ticket. Existing: archive blackboard/traces, retrospective.
 
 ---
 
 ## Orchestration: Concurrent Blind Review
 
 ```
+SM PREFLIGHT (parallel, before Phase 1):
+  Scrum Master runs DoD preflight per protocols/definition-of-done.md:
+  Check ticket + ACs, extract ACs to blackboard, set ticket status.
+  This runs in parallel — does not block Phase 1.
+  ↓
 Phase 1: FRAME
   Orchestrator writes Commander's Intent with PR/diff reference to blackboard
   Orchestrator assigns named blackboard sections to each reviewer
@@ -291,6 +300,17 @@ clean exit and may leave orphaned team resources.""")
 | Review | Reviewer reads other section (blindness breach) | L2: Note in retro, findings still valid but convergence signal weakened |
 | Blind Gate | One reviewer never submits trace | L2: Time-box (skip after timeout), proceed with available findings |
 | Synthesis | Orchestrator adds own opinions beyond categorization | L2: Bell event — synthesis should categorize, not originate |
+
+---
+
+## Definition of Done
+
+This squad follows `protocols/definition-of-done.md`.
+Default level: `mission-complete` (override in Commander's Intent).
+
+The Scrum Master runs the Preflight checklist before Phase 1 (FRAME).
+The Facilitator verifies ACs against review findings during Phase 5 (SYNTHESIS).
+The Scrum Master runs the Cleanup checklist after the mission retrospective.
 
 ---
 

@@ -84,12 +84,12 @@ decomposition (that is the Architect's role).
 
 | Phase | Action |
 |-------|--------|
-| Mission start | Read error catalog, pre-warn known failures, set up Jira ticket (transition to "In Arbeit"). Verify budget trackers initialized for all agents. |
+| Mission start (preflight) | **DoD Preflight** (`protocols/definition-of-done.md`): Check ticket exists (WARN if missing, don't block). Check ticket has ACs (WARN if missing). Extract ACs to blackboard `## Acceptance Criteria`. Set ticket to "In Progress", fill start date. Read error catalog, pre-warn known failures. Verify budget trackers initialized for all agents. |
 | During mission | Monitor for L2+ failures, apply catalog fixes, log new failures. Create Jira ticket for unresolved errors (Rule 6). Write `crystallization_candidate` events to `events.jsonl` for significant findings. Monitor budget tracker zones — render status to blackboard `## Relay Baton` → `### Budget Status` on zone changes. **Scaling:** after each phase transition, run `bash scripts/context-budget.sh render-all` and check TaskList for queue imbalance; if any agent hits YELLOW or owns >5 pending tasks, write a `## Scale Requests` entry and notify Orchestrator. See `protocols/dynamic-scaling.md`. |
 | After research/review phase | Generate briefing if blackboard >10KB. Decompose findings into tasks. |
 | Mission end | Update Jira (transition to "Erledigt", add comment, set due date), update error catalog |
 | Post-mission crystallization | Run Crystallization Protocol Steps 1-2.5 (see below). This is **mandatory** — not optional. |
-| Post-mission cleanup | Run `protocols/mission-cleanup.md`: archive traces + blackboard, verify retro + projections, log events |
+| Post-mission cleanup | **DoD Cleanup** (`protocols/definition-of-done.md`): Create session log, update handoff doc, update ticket (comment + due date). Then run `protocols/mission-cleanup.md`: archive traces + blackboard, verify retro + projections, log events |
 
 ## Knowledge Crystallization (Mandatory Post-Mission)
 

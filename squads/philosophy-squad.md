@@ -23,7 +23,7 @@
 | **Facilitator** | Orchestrator | Orchestrator (opus) | Frames the question, holds the space, distills understanding |
 | **Explorer** | Investigator | Specialist (sonnet) | Builds understanding through research and reasoning |
 | **Questioner** | Challenger (Socratic lens) | Specialist (sonnet) | Asks probing questions, challenges assumptions, deepens inquiry |
-| **Scrum Master** (recommended) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), operational fixes (parallel) |
+| **Scrum Master** (required) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), DoD preflight/cleanup (`protocols/definition-of-done.md`), operational fixes (parallel) |
 
 **Note:** The Philosophy Squad is intentionally small. Deep thinking benefits from fewer voices and deeper exchanges, not broader teams. The Socratic lens on the Challenger differentiates this from the standard adversarial review — the Questioner seeks to deepen, not to defeat.
 
@@ -32,6 +32,11 @@
 ## Orchestration Pattern: Socratic Exploration
 
 ```
+SM PREFLIGHT (parallel, before Phase 1):
+  Scrum Master runs DoD preflight per protocols/definition-of-done.md:
+  Check ticket + ACs, extract ACs to blackboard, set ticket status.
+  This runs in parallel — does not block Phase 1.
+  ↓
 Phase 1: FRAME
   Orchestrator writes philosophical brief to blackboard:
   - The question (stated precisely)
@@ -211,6 +216,17 @@ arguments but to deepen understanding. Ask questions that the Explorer
 hasn't considered, not to trap them, but to illuminate what's been
 overlooked. The best question is one where neither of you knows the answer yet."
 ```
+
+---
+
+## Definition of Done
+
+This squad follows `protocols/definition-of-done.md`.
+Default level: `mission-complete` (override in Commander's Intent).
+
+The Scrum Master runs the Preflight checklist before Phase 1 (FRAME).
+The Facilitator verifies ACs against distillation during Phase 5 (DISTILL).
+The Scrum Master runs the Cleanup checklist after the mission retrospective.
 
 ---
 
