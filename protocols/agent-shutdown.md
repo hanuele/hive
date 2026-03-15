@@ -40,7 +40,12 @@ clean exit and may leave orphaned team resources.
 
 ---
 
-## Part 2 — Shutdown Primer Message
+## Part 2 — Farewell & Shutdown Primer
+
+> **Before** sending the shutdown primer below, the Scrum Master (or
+> Orchestrator) sends a farewell message per `protocols/agent-farewell.md`.
+> The farewell acknowledges the agent's specific contribution. Wait 5-10
+> seconds after the farewell before sending the primer.
 
 Before sending `shutdown_request`, send a **shutdown primer** to the agent. This serves two purposes:
 1. Re-activates a potentially idle agent (triggers a new turn)

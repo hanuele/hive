@@ -31,15 +31,20 @@ contraction even when conversation history does not. Write here early and often.
 <!-- Write working state here per protocols/checkpoint.md.
      Overwrite your previous checkpoint — only the latest matters. -->
 
+### Agent Reflections
+<!-- Optional. Agents may write a brief reflection as part of their
+     final checkpoint: what they learned, what surprised them, what
+     they'd do differently. See protocols/agent-farewell.md. -->
+
 ## Acceptance Criteria
-<!-- Written by Scrum Master during preflight. Extracted from ticket.
+<!-- Written by Scrum Master during preflight. Extracted from Jira ticket.
      Format: numbered list of ACs from the ticket.
-     If no ticket exists, SM writes WARN and leaves this section empty. -->
+     If no Jira ticket exists, SM writes WARN and leaves this section empty. -->
 
 ## Acceptance Criteria Verification
 <!-- Written by Verifier (Engineering) or Facilitator (other squads) during verification phase.
      Format:
-     Source: {TICKET-ID}
+     Source: DD-XXX
      - [x] AC text (PASS)
      - [ ] AC text (FAIL - reason)
 -->

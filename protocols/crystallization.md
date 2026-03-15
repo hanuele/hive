@@ -77,6 +77,37 @@ For each candidate pattern, ask:
 
 This transforms the Crystallization Spiral from a neutral learning system into a discerning one — one that learns what to become, not just what happened.
 
+### Step 2.75 — ARCHIVE (mycelium, optional)
+
+When Neo4j is available, archive the mission's structured findings,
+decisions, and deeper patterns to the mycelium graph. This creates
+a queryable knowledge layer across all missions — enabling questions
+like "which missions found issues with X?" or "what decisions were
+made about Y across all squads?"
+
+**Run:**
+```bash
+python3 ~/.claude/scripts/ingest-hive-findings.py \
+    .claude/hive/memory/active/blackboard/{mission-name}.md \
+    --mission-id "hive/{mission-name}"
+```
+
+**Graceful degradation:** If Neo4j is unavailable, the script logs
+`[WARN]` and exits cleanly. This step NEVER blocks the crystallization
+pipeline — document-based crystallization (Steps 1-2.5) is the primary
+record; mycelium is the enrichment layer. The Scrum Master simply skips
+this step with a note in Operational Status.
+
+**What gets archived:**
+- `## Findings` — as `HiveFinding` nodes with confidence, source, agent
+- `## Decisions` — as `HiveDecision` nodes with rationale
+- `## Deeper Patterns` — stored as properties on the `HiveMission` node
+
+**What does NOT get archived:**
+- Agent checkpoints (ephemeral, overwritten)
+- Operational status (SM-internal, not mission knowledge)
+- Relay baton (handoff state, not findings)
+
 ### Step 3 — PROMOTE (threshold: 3+ missions)
 
 Patterns validated across 3+ missions are proposed as rules. The proposal goes to the human as a suggested CLAUDE.md amendment or protocol update.

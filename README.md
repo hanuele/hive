@@ -198,7 +198,9 @@ hive/
 │   ├── insufficient-basis.md    #   When "we don't know" is the answer
 │   ├── definition-of-done.md    #   Mission completion checklists (solo + squad)
 │   ├── dynamic-scaling.md       #   Horizontal worker scaling mid-mission
-│   └── return-to-sangha.md      #   Context renewal: Living Baton + Budget Tracker
+│   ├── return-to-sangha.md      #   Context renewal: Living Baton + Budget Tracker
+│   ├── right-conduct.md         #   Five Mindfulness Trainings applied to agents
+│   └── agent-farewell.md        #   "Rest Well" — acknowledging agents before shutdown
 │
 ├── terrain/                     # Mission assessment framework
 │   ├── analysis-axes.md         #   4 axes: Uncertainty, Reversibility, Breadth, Stakes
@@ -288,14 +290,16 @@ flowchart TD
     I --> J[Write Traces]
     J --> K{Mission Complete?}
     K -->|No| I
-    K -->|Yes| L[Breathing Space]
-    L --> M[Retrospective]
-    M --> N[Crystallization]
-    N --> O[Cleanup]
+    K -->|Yes| L[Farewells]
+    L --> M[Breathing Space]
+    M --> N[Retrospective]
+    N --> O[Crystallization]
+    O --> P[Cleanup]
 
     style A fill:#f9f,stroke:#333
-    style L fill:#e8f5e9,stroke:#2e7d32
-    style O fill:#e3f2fd,stroke:#1565c0
+    style L fill:#fff9c4,stroke:#f9a825
+    style M fill:#e8f5e9,stroke:#2e7d32
+    style P fill:#e3f2fd,stroke:#1565c0
 ```
 
 ---
