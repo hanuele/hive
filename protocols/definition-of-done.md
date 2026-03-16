@@ -9,19 +9,26 @@
 Applies to: Solo work (no squad). Lightweight gate.
 
 - [ ] Tests pass (full suite, not just new tests)
-- [ ] Acceptance criteria verified (if Jira ticket exists)
+- [ ] Acceptance criteria verified (if ticket/ACs exist)
 - [ ] Session log updated (`docs/sessions/`)
-- [ ] Handoff doc updated (`docs/handoff/`)
 
 ### `mission-complete` (default for all squad missions)
 
 Applies to: All Hive squad missions unless Commander's Intent specifies otherwise.
 
 **Preflight (Scrum Master, Phase 0):**
-- [ ] Jira ticket linked to mission (WARN if missing, not blocking)
-- [ ] Ticket has acceptance criteria (WARN if missing)
+- [ ] Task tracking linked to mission (project-dependent, see below)
+- [ ] Acceptance criteria exist (from ticket, Commander's Intent, or interview)
 - [ ] Acceptance criteria extracted and written to blackboard `## Acceptance Criteria`
-- [ ] Ticket status set to "In Arbeit" (start date set automatically by Jira Automation)
+
+Task tracking per project:
+| Project | Tracker | Preflight action |
+|---------|---------|-----------------|
+| MinersDiners | Jira (DD) | Link ticket, set "In Arbeit", extract ACs from ticket |
+| CrossLoom | File-based / commit | Note task in Commander's Intent, ACs from interview |
+| Other | Git commit | ACs from Commander's Intent or interview |
+
+If no formal tracker exists, ACs come from the Commander's Intent or a quick interview with Peter. The absence of Jira is a WARN, not a blocker.
 
 **Verification (Verifier or Facilitator, Phase 6):**
 - [ ] Each AC verified individually (structured checklist on blackboard `## Acceptance Criteria Verification`)
@@ -33,8 +40,7 @@ Applies to: All Hive squad missions unless Commander's Intent specifies otherwis
 
 **Cleanup (Scrum Master, post-mission):**
 - [ ] Session log created (`docs/sessions/`)
-- [ ] Handoff doc updated (`docs/handoff/`)
-- [ ] Jira ticket updated (comment with summary; due date set automatically by Jira Automation)
+- [ ] Task tracker updated (Jira comment if MinersDiners; commit message if other)
 - [ ] Blackboard archived
 - [ ] Traces archived
 - [ ] Retrospective filed

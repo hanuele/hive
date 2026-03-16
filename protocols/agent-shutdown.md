@@ -146,8 +146,7 @@ dead even if not cleanly shut down.
 After sending `shutdown_request` and receiving `shutdown_response`:
 
 1. Check `~/.claude/teams/{team-name}/config.json` — the agent's entry should be removed.
-2. If running in tmux: `tmux ls` — the agent's pane should no longer appear.
-3. Only call `TeamDelete` after ALL agents have responded or timed out.
+2. Only call `TeamDelete` after ALL agents have responded or timed out.
 
 ---
 

@@ -39,12 +39,13 @@ contraction even when conversation history does not. Write here early and often.
 ## Acceptance Criteria
 <!-- Written by Scrum Master during preflight. Extracted from Jira ticket.
      Format: numbered list of ACs from the ticket.
-     If no Jira ticket exists, SM writes WARN and leaves this section empty. -->
+     If no Jira ticket exists, ask for an acceptance criteria before continuing,
+     SM writes WARN and leaves this section empty. -->
 
 ## Acceptance Criteria Verification
 <!-- Written by Verifier (Engineering) or Facilitator (other squads) during verification phase.
      Format:
-     Source: DD-XXX
+     Source: {ticket-key or "Commander's Intent"}
      - [x] AC text (PASS)
      - [ ] AC text (FAIL - reason)
 -->
