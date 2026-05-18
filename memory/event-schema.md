@@ -104,6 +104,46 @@ Additional fields may be present for specific event types (documented below).
 {"ts":"...","mission":"...","agent":"...","event":"failure","detail":"L2: Empty output from implementer after design phase","level":"L1|L2|L3|L4","action_taken":"retry|skip|substitute|pause|abort"}
 ```
 
+### Context Renewal
+
+| Event Type | When | Agent |
+|-----------|------|-------|
+| `baton_written` | Living baton updated on blackboard or session log | Orchestrator / solo |
+| `zone_change` | Budget tracker zone transition (GREEN→YELLOW, etc.) | Any |
+| `relay_initiated` | Agent begins relay sequence (checkpoint → shutdown) | Any |
+| `relay_complete` | Fresh agent has successfully resumed from baton | Any |
+| `orchestrator_relay` | Orchestrator itself is relaying (requires human intervention) | Orchestrator |
+
+**`baton_written` additional fields:**
+
+```json
+{"ts":"...","mission":"...","agent":"orchestrator","event":"baton_written","detail":"Baton updated: synthesis phase complete, 3 findings distilled","trigger":"phase_transition|decision|finding|error_resolved"}
+```
+
+**`zone_change` additional fields:**
+
+```json
+{"ts":"...","mission":"...","agent":"investigator-alpha","event":"zone_change","detail":"GREEN → YELLOW at turn 16","from_zone":"GREEN","to_zone":"YELLOW","turn":16,"files_read_kb":82}
+```
+
+**`relay_initiated` additional fields:**
+
+```json
+{"ts":"...","mission":"...","agent":"investigator-alpha","event":"relay_initiated","detail":"Agent approaching RED, writing final checkpoint for hot-swap","strategy":"hot_swap|phase_gated|orchestrator_relay"}
+```
+
+**`relay_complete` additional fields:**
+
+```json
+{"ts":"...","mission":"...","agent":"investigator-alpha-v2","event":"relay_complete","detail":"Resumed from baton, verified 3 findings, continuing research","baton_source":"blackboard|session_log","predecessor":"investigator-alpha"}
+```
+
+**`orchestrator_relay` additional fields:**
+
+```json
+{"ts":"...","mission":"...","agent":"orchestrator","event":"orchestrator_relay","detail":"Orchestrator at RED — shutting down squad, requesting human restart","squad_size":3,"baton_path":".claude/hive/memory/active/blackboard/{mission}.md"}
+```
+
 ### Knowledge
 
 | Event Type | When | Agent |

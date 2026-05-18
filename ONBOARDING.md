@@ -16,6 +16,28 @@ claude   # Start Claude Code
 # If it works, Agent Teams is enabled. Clean up: TeamDelete
 ```
 
+## 1.5 The Overlay Model
+
+The Hive's resolution model is a two-layer overlay: a **framework** layer
+(constitutions, protocols, personas, terrain, differentiation, memory
+patterns — global, single point of truth) sits behind a **per-project
+overlay** (squads, project-specific orchestrator persona, briefings,
+project runtime state — `<your-project>/.claude/hive/`). Project files
+take precedence when present; the framework is the fallback.
+
+Files that diverge across projects (squads, project READMEs) belong in
+the overlay. Files that should be canonical across the lineage (the
+constitutions, protocols, mindfulness practices) live in the framework.
+
+**Resolution semantics by class:**
+
+| Directory class | Path examples | Resolution |
+|---|---|---|
+| Framework | `constitutions/`, `protocols/`, `personas/<non-orchestrator>`, `terrain/`, `differentiation/`, `memory/patterns/`, `DOMAIN-INJECTION.md` | global-only (project-shadow = lint warning) |
+| Overlay | `squads/`, `personas/orchestrator.md`, `README.md`, `integration-guide.md`, `briefings/`, `terrain/<override>`, `protocols/<override>` | project-wins, fallback global |
+| Runtime (project) | `memory/active/blackboard/`, `memory/active/error-catalog.md`, `memory/active/pattern-tracker.md`, `memory/archive/` | project-only |
+| Runtime (cross-project) | `memory/active/blackboard/` (when invoked outside a project) | global-only |
+
 ## 2. Installation
 
 ```bash
