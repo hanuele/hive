@@ -134,6 +134,18 @@ The Hive layers on top — it doesn't replace existing single-purpose agents:
 
 > Customize this table for your project's existing agents.
 
+## Coordination Hooks
+
+The Hive's coordination model (escalation tiers, breathing space, Sangha principles) is realised at runtime by a small set of Claude Code hooks. These hooks live in the `claude-env` repository alongside the rest of the Protocol OS hook layer, not in this repo — the Hive repo is pure Markdown knowledge. The hook scripts reference Hive protocols by path in their headers, and the mycelium graph carries `(Topic{id:"hive-coordination"})-[:IMPLEMENTED_BY]->(hook)` edges so the relationship is discoverable from either side.
+
+| Hook | Location | Purpose | Related Hive protocols |
+|------|----------|---------|------------------------|
+| `hook-teammate-idle.sh` | `~/.claude/scripts/hooks/` (claude-env repo) | TeammateIdle coordination — reads Hive blackboard, emits Sangha-principle nudges on prolonged teammate idle | `protocols/escalation-rules.md`, `protocols/breathing-space.md` |
+
+When the listed Hive protocols evolve, review the corresponding hook's nudge prose so runtime behavior tracks the model.
+
+Design decision recorded in `D:/VersionControl/claude-env/docs/plans/protocol-os/hook-audit/implementation/levels/L3-05-hive-integration/L3-05-02-hive-repo-integration-design.md` (Option D: annotate, don't move; approved 2026-04-23).
+
 ## {ISSUE_TRACKER} Convention
 
 Add a terrain assessment to ticket comments when picking up a ticket:

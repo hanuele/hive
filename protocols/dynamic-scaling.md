@@ -205,8 +205,10 @@ without clean exit and may leave orphaned team resources.
 
 ## CRITICAL: Context Budget
 
-Initialize the budget tracker at session start:
+Initialize the budget tracker (reads Protocol OS context zone from session trace):
+  export SESSION_ID="{session-uuid}"
   bash scripts/context-budget.sh init {clone-name} --profile subagent
+  # Zone source: ~/.claude/traces/{SESSION_ID}.jsonl zone_transition events
 
 After each major operation:
   bash scripts/context-budget.sh tick {clone-name} --files-read {bytes}
