@@ -101,6 +101,19 @@ Post-submission, the Challenger (if present) reads all findings; synthesis follo
 This is already enforced by the Productive Waiting exception but is now a
 first-class codified rule: **blind divergence is non-negotiable for fan-out**.
 
+### Lateral Fan-out (/wander far-domain variant), gated — 1 session, encouraging not proven
+The Blind Divergence Protocol + Convergent Findings rules above are the *generic*
+form: Investigators diverge via depth/breadth/contrarian heuristics over the
+problem's home domain. When the fan-out can't surface a *non-obvious alternative
+frame* — every investigator keeps returning the same near-domain hypothesis — switch
+them to the **`/wander`** procedure (`~/.claude/skills/wander/SKILL.md`): each blind
+Investigator names a domain-neutral skeleton and transposes an *executable* move from
+≥4 surface-FAR domains. Convergence by *different far domains* is the stronger signal
+(see `vault/patterns/2026-06-21-blind-parallel-fan-out-quality-primitive.md`). This is
+**gated** on the stuck-on-the-obvious-frame jam, not a default — and it rests on one
+worked example (the 2026-06-21 sangha-map spike), so treat it as encouraging, not yet
+codified at the 3-mission bar the rules above clear.
+
 ### Component Extraction as Deliverable (3 missions, CODIFIED 2026-03-05)
 Research outputs should decompose findings into named, independently-actionable
 components with effort estimates where applicable. This enables downstream
