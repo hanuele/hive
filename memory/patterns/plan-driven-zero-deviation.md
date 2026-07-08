@@ -54,6 +54,6 @@ tasks but riskier for complex ones.
 
 ## Retrospective References
 
-- `memory/archive/retrospectives/kan229-json-validation-retro.md`
-- `memory/archive/retrospectives/lassonde-classification-retro.md`
-- `memory/archive/retrospectives/kan242-ux-audit-retro.md`
+- `memory/archive/retrospectives/kan229-json-validation-retro.md` (archived in the origin project — not shipped with the framework)
+- `memory/archive/retrospectives/lassonde-classification-retro.md` (archived in the origin project — not shipped with the framework)
+- `memory/archive/retrospectives/kan242-ux-audit-retro.md` (archived in the origin project — not shipped with the framework)
