@@ -45,3 +45,33 @@ Terrain can change. If, during a mission, the Orchestrator observes:
 An Orchestrator that assesses a task as "low uncertainty" when it is "high uncertainty" will assemble an Engineering Squad for a Research problem. The squad will build before it understands.
 
 **Verification step:** After the squad takes its first actions, the Orchestrator should confirm that reality matches the terrain assessment.
+
+## Scoring Rubric (the tiebreak, not the lens)
+
+The qualitative questions above are the primary lens — read the mission and
+judge it. The rubric exists only to make the *auto-decide* reproducible when
+two people (or two sessions) would otherwise assess the same mission
+differently. Score each axis 0–2, sum, and map to an engagement bucket that
+composition-rules consumes.
+
+| Axis | 0 | 1 | 2 |
+|------|---|---|---|
+| **Uncertainty** | We know what to build and how | We know *what*, not *how* | Unknowns we haven't even identified yet |
+| **Reversibility** | Trivially undoable (branch, worktree) | Undoable with effort | Irreversible / large blast radius |
+| **Breadth** | One file or domain | A few related areas | Many domains or systems |
+| **Stakes** | Low cost of failure | Meaningful cost (time, trust) | Severe (money, harm, data loss) |
+
+**Sum → bucket:**
+
+| Sum | Bucket | Maps to |
+|-----|--------|---------|
+| 0–2 | **low** | Single agent, or Focused Build (3). Light governance. |
+| 3–5 | **medium** | A standard squad (Research / Full Engineering / Creative) with one Challenger lens. |
+| 6–8 | **high** | Full governance — adversarial review + human gate (Review / Strategy), 4–6 agents. |
+
+**Precedence floor (ties to the Tiebreaker in `composition-rules.md`):** a single
+score of **2 on Reversibility or Stakes floors the bucket at `high`**, regardless
+of the sum. This encodes the precedence `REVERSIBILITY > STAKES > UNCERTAINTY >
+BREADTH` — an irreversible or high-stakes mission gets full governance even when
+it is otherwise narrow and well-understood. The bucket sizes the engagement; the
+per-axis buckets still pick the squad *type* via `composition-rules.md`.

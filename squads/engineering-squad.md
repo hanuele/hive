@@ -40,7 +40,7 @@
 
 | Role | Persona | Lens | Agent Type | Tier | Tools |
 |------|---------|------|-----------|------|-------|
-| Orchestrator | Orchestrator | — | `general-purpose` | Orchestrator (opus) | Full + Team tools |
+| Orchestrator | Orchestrator | — | `general-purpose` | Orchestrator (opus) | Full toolset |
 | Designer | Architect | — | `general-purpose` | Specialist (sonnet) | Read-only |
 | Reviewer | Challenger | — | `general-purpose` | Specialist (sonnet) | Read-only |
 | Implementer | Architect | operator | `general-purpose` | Operator (sonnet) | Full (Read, Write, Edit, Bash) |
@@ -48,6 +48,8 @@
 | Scrum Master (required) | Scrum Master | operational | `general-purpose` | Specialist (sonnet) | Read, Write, Bash (no code edit) |
 
 **Key:** Orchestrator manages pipeline. Reviewer challenges design before implementation. 4-5 agents + Scrum Master (in parallel).
+
+**Model & effort tiering.** The `(opus)`/`(sonnet)` hints above are legacy tier labels — read them as "orchestrator-tier / specialist-tier / operator-tier," and set the actual model and reasoning effort via each agent's `agents/` frontmatter (`model: inherit`) plus this guidance. The Orchestrator inherits the session model. The Verifier (Challenger + correctness lens) runs at high reasoning effort — verification is where cutting effort costs most. The Designer/Implementer (Architect) run medium-to-high. The Scrum Master is haiku-class / low effort (operational, not deliberative).
 
 ---
 
@@ -158,150 +160,73 @@ Engineering Squad uses the standard blackboard template with these additional se
 
 ### Focused Build (Claude Code)
 
+Install the custom agent types once (`cp agents/*.md .claude/agents/`), then
+spawn by type with a `name` (which makes each agent addressable via
+`SendMessage`). Lens is injected in the charge, not the agent file. If task
+tools (`TaskCreate`/`TaskUpdate`) are available, mirror the phases for
+visibility; otherwise the trace files and the blackboard track progress.
+
 ```python
-# Human creates team and blackboard
-TeamCreate(team_name="eng-{ticket}", description="{one-line mission}")
+# Designer — read-only. Produces the change plan; does not implement.
+# Use the built-in read-only Explore type, or the architect type constrained
+# to design-only in its charge.
+Agent(subagent_type="Explore", name="designer", run_in_background=True,
+      prompt="""You are The Architect, Designer lens (read-only).
+Mission: [paste Commander's Intent].
+Blackboard: .claude/hive/memory/active/blackboard/{mission}.md
+Read the target files and coding guidelines, then write a structured change
+plan to the "## Change Plan" section (files to modify, per-file changes,
+out-of-scope, expected test files). Identify yourself as designer. Follow BLUF.
+When done, append the trace file:
+  {mission}-designer-design_complete.trace""")
 
-# Create tasks
-TaskCreate(subject="Design changes", description="Read target files + guidelines, write change plan to blackboard")
-TaskCreate(subject="Implement changes", description="Read change plan, implement in worktree")
-TaskCreate(subject="Verify changes", description="Read changes, run tests, check guidelines compliance")
+# Implementer — Architect + operator lens. Writes code IN A WORKTREE.
+Agent(subagent_type="architect", name="implementer", isolation="worktree",
+      run_in_background=True,
+      prompt="""You are The Architect with operator lens.
+Mission: [paste Commander's Intent].
+Blackboard: .claude/hive/memory/active/blackboard/{mission}.md
+Read the change plan, then implement all changes in your worktree. For every
+NEW file, create a corresponding test file ("no tests for new code" is
+merge-blocking); list them in your implementation notes. Do NOT deviate from
+the plan without documenting why. Checkpoint per protocols/checkpoint.md.
+When done, write the trace file.""")
 
-# Spawn agents
-Agent(subagent_type="explorer", name="designer",
-      team_name="eng-{ticket}", model="sonnet",
-      prompt="""You are The Architect (personas/architect.md).
-Your mission: [paste Commander's Intent]
-Your task: Read the target files and coding guidelines, then write a structured change plan to the blackboard.
-
-## CRITICAL: Shutdown Handling
-
-When you receive a message with type "shutdown_request", you MUST respond
-using the SendMessage tool with type "shutdown_response" and approve: true.
-Extract the requestId from the message and pass it as request_id.
-Do NOT just acknowledge it in text — you must actually call the tool.
-
-Example:
-  SendMessage(type="shutdown_response", request_id="<requestId from message>", approve=True)
-
-This is a hard requirement. Failure to respond terminates your session without
-clean exit and may leave orphaned team resources.
-
-Write your change plan to: .claude/hive/memory/active/blackboard/{mission}.md
-Under the "## Change Plan" section.
-
-After completing your plan, write a trace file:
-echo '{"ts":"...","mission":"...","agent":"designer","action":"design_complete","detail":"..."}' > .claude/hive/memory/active/traces/{mission}-designer-design_complete.trace
-
-Follow BLUF format for all communication.
-
-## CRITICAL: Context Budget
-
-Initialize the budget tracker at session start:
-  bash scripts/context-budget.sh init designer --profile subagent
-
-After each major operation (file read, web fetch, multi-step analysis):
-  bash scripts/context-budget.sh tick designer --files-read {bytes}
-
-At YELLOW: checkpoint immediately, increase write frequency.
-At RED: write final findings to blackboard, signal relay readiness to team lead.
-At CRITICAL: stop new work, re-read your checkpoint from the blackboard.""")
-
-Agent(subagent_type="general-purpose", name="implementer",
-      team_name="eng-{ticket}", model="sonnet",
-      prompt="""You are The Architect with operator lens (personas/architect.md).
-Your mission: [paste Commander's Intent]
-Your task: Read the change plan on the blackboard, then implement all changes.
-
-## CRITICAL: Shutdown Handling
-
-When you receive a message with type "shutdown_request", you MUST respond
-using the SendMessage tool with type "shutdown_response" and approve: true.
-Extract the requestId from the message and pass it as request_id.
-Do NOT just acknowledge it in text — you must actually call the tool.
-
-Example:
-  SendMessage(type="shutdown_response", request_id="<requestId from message>", approve=True)
-
-This is a hard requirement. Failure to respond terminates your session without
-clean exit and may leave orphaned team resources.
-
-Read the change plan from: .claude/hive/memory/active/blackboard/{mission}.md
-Work in the provided worktree or branch.
-
-IMPORTANT: For every NEW file you create, you MUST also create a corresponding
-test file. "No tests for new code" is a merge-blocking failure. List test files
-in your implementation notes on the blackboard.
-
-Follow the Checkpoint Protocol (protocols/checkpoint.md): write working state
-to the blackboard's "## Current State" section after every 3 findings or
-before any long tool operation.
-
-After completing implementation, write a trace file.
-Do NOT deviate from the change plan without documenting why.
-
-## CRITICAL: Context Budget
-
-Initialize the budget tracker at session start:
-  bash scripts/context-budget.sh init implementer --profile subagent
-
-After each major operation (file read, multi-file edit, test suite):
-  bash scripts/context-budget.sh tick implementer --files-read {bytes}
-
-At YELLOW: checkpoint immediately, increase write frequency.
-At RED: write final findings to blackboard, signal relay readiness to team lead.
-At CRITICAL: stop new work, re-read your checkpoint from the blackboard.""")
-
-Agent(subagent_type="general-purpose", name="verifier",
-      team_name="eng-{ticket}", model="sonnet",
-      prompt="""You are The Challenger with correctness lens (personas/challenger.md).
-Your mission: [paste Commander's Intent]
-Your task: Verify the implementation matches the change plan and passes all tests.
-
-## CRITICAL: Shutdown Handling
-
-When you receive a message with type "shutdown_request", you MUST respond
-using the SendMessage tool with type "shutdown_response" and approve: true.
-Extract the requestId from the message and pass it as request_id.
-Do NOT just acknowledge it in text — you must actually call the tool.
-
-Example:
-  SendMessage(type="shutdown_response", request_id="<requestId from message>", approve=True)
-
-This is a hard requirement. Failure to respond terminates your session without
-clean exit and may leave orphaned team resources.
-
-1. Read the change plan from the blackboard
-2. Read the implemented changes
-3. Check that every NEW file has a corresponding test file (zero tests = FAIL, merge-blocking)
-4. Run the test suite: {PROJECT_TEST_COMMAND}
-<!-- DOMAIN: Replace {PROJECT_TEST_COMMAND} with your project's test command (e.g., docker-compose exec api-gateway pytest, npm test, cargo test) -->
-5. Check coding guidelines compliance
-6. Read ticket ACs from blackboard (SM extracts them during preflight)
-7. Write structured AC checklist to blackboard:
-   ## Acceptance Criteria Verification
-   Source: {TICKET-ID}
-   - [x] AC text (PASS)
-   - [ ] AC text (FAIL -- reason)
-8. If mission created a DB migration: run upgrade/downgrade/upgrade cycle
-9. If diff touches Dockerfile/requirements/docker-compose/shared:
-   run docker build + health checks
-10. Write results to blackboard under "## Verification"
-
-After completing verification, write a trace file.
-
-## CRITICAL: Context Budget
-
-Initialize the budget tracker at session start:
-  bash scripts/context-budget.sh init verifier --profile subagent
-
-After each major operation (test suite run, file read):
-  bash scripts/context-budget.sh tick verifier --files-read {bytes}
-
-At YELLOW: checkpoint immediately, increase write frequency.
-At RED: write final findings to blackboard, signal relay readiness to team lead.
-At CRITICAL: stop new work, re-read your checkpoint from the blackboard.""")
+# Verifier — Challenger + correctness lens. Read-only over the code + tests.
+Agent(subagent_type="challenger", name="verifier", run_in_background=True,
+      prompt="""You are The Challenger with correctness lens.
+Mission: [paste Commander's Intent].
+Blackboard: .claude/hive/memory/active/blackboard/{mission}.md
+1. Read the change plan and the implemented changes.
+2. Every NEW file must have a test file (zero tests = FAIL, merge-blocking).
+3. Run the test suite: {PROJECT_TEST_COMMAND}
+   <!-- DOMAIN: replace via bootstrap/DOMAIN-INJECTION-CHECKLIST.md -->
+4. Check coding-guidelines compliance; read ticket ACs from the blackboard.
+5. Write an AC checklist + results to "## Verification". If a migration was
+   added, run upgrade/downgrade/upgrade; if the diff touches build/deps/shared,
+   run the build + health checks. Write the trace file when done.""")
 ```
+
+**Cross-repo write constraint (learned).** Spawned agents cannot write files
+outside the session's working directories — they can read anywhere, but a write
+to another repo silently has nowhere to land. Two proven patterns handle this:
+- **`isolation:"worktree"`** for a write-role working a code repo (as the
+  Implementer above): the agent gets its own git worktree, an isolated copy it
+  can freely modify, auto-cleaned if unchanged.
+- **Agents-research / orchestrator-writes** for cross-repo work: the write-role
+  agent researches and returns a change plan or diff as its findings, and the
+  orchestrator (running in the session's working directories) applies it. Design
+  the charge so the agent never needs to write where it cannot.
+
+**Shutdown.** No `shutdown_request` handshake, no team teardown. A background
+agent finishes, writes its final trace + blackboard entry, and sends a
+completion message (carrying its farewell); the harness notifies you. Stop one
+early with `TaskStop <agent-id>` after preserving partial work. Lifecycle:
+`protocols/agent-shutdown.md`; farewell: `protocols/agent-farewell.md`.
+
+**Context.** Each agent watches its own context; if depleted, it writes the
+Living Baton per `protocols/return-to-sangha.md` and ends cleanly. No zone
+tables in spawn prompts.
 
 ---
 

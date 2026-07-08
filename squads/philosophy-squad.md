@@ -20,12 +20,16 @@
 
 | Role | Persona | Tier | Responsibility |
 |------|---------|------|---------------|
-| **Facilitator** | Orchestrator | Orchestrator (opus) | Frames the question, holds the space, distills understanding |
+| **Orchestrator** (historically: Facilitator) | Orchestrator | Orchestrator (opus) | Frames the question, holds the space, distills understanding |
 | **Explorer** | Investigator | Specialist (sonnet) | Builds understanding through research and reasoning |
 | **Questioner** | Challenger (Socratic lens) | Specialist (sonnet) | Asks probing questions, challenges assumptions, deepens inquiry |
 | **Scrum Master** (required) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), DoD preflight/cleanup (`protocols/definition-of-done.md`), operational fixes (parallel) |
 
 **Note:** The Philosophy Squad is intentionally small. Deep thinking benefits from fewer voices and deeper exchanges, not broader teams. The Socratic lens on the Challenger differentiates this from the standard adversarial review — the Questioner seeks to deepen, not to defeat.
+
+**Model & effort tiering.** The `(opus)`/`(sonnet)` hints above are legacy tier labels — set the actual model and reasoning effort via each agent's `agents/` frontmatter (`model: inherit`) plus this guidance. This squad is the one place to spend the most: the Orchestrator inherits the session model, and both the Explorer (Investigator) and Questioner (Challenger + Socratic lens) run at **high** reasoning effort — conceptual depth is the entire deliverable. The Scrum Master is haiku-class / low effort.
+
+**Spawn & lifecycle.** Install the custom agent types once (`cp agents/*.md .claude/agents/`); spawn the Explorer role as `subagent_type="investigator"` (e.g. `name="explorer-inv"`) and the Questioner as `subagent_type="challenger"` with the Socratic lens injected in the charge. Because the inquiry is sequential (each question builds on the last answer), the Orchestrator resumes the Explorer between rounds with `SendMessage({to: "explorer-inv", ...})` rather than re-spawning it — a named agent resumes with its context intact. See `squads/research-squad.md` for the spawn shape. Shutdown/context follow the standard rule (`protocols/agent-shutdown.md`, `protocols/return-to-sangha.md`).
 
 ---
 
@@ -225,7 +229,7 @@ This squad follows `protocols/definition-of-done.md`.
 Default level: `mission-complete` (override in Commander's Intent).
 
 The Scrum Master runs the Preflight checklist before Phase 1 (FRAME).
-The Facilitator verifies ACs against distillation during Phase 5 (DISTILL).
+The Orchestrator verifies ACs against distillation during Phase 5 (DISTILL).
 The Scrum Master runs the Cleanup checklist after the mission retrospective.
 
 ---

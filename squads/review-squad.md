@@ -19,7 +19,7 @@
 
 | Role | Persona | Lens | Agent Type | Tier | Tools |
 |------|---------|------|-----------|------|-------|
-| Facilitator | Orchestrator | — | `general-purpose` | Orchestrator (opus) | Full + Team tools |
+| Orchestrator (historically: Facilitator) | Orchestrator | — | `general-purpose` | Orchestrator (opus) | Full toolset |
 | Correctness Reviewer | Challenger | correctness | `general-purpose` | Specialist (sonnet) | Read-only + Bash (for running tests) |
 | Security Reviewer | Challenger | security | `general-purpose` | Specialist (sonnet) | Read-only |
 
@@ -46,6 +46,8 @@ Runs in parallel with all phases. Handles error catalog, crystallization protoco
 **SM Preflight (before Phase 1):** Check ticket exists (WARN if missing). Check ticket has ACs (WARN if missing). Extract ACs to blackboard `## Acceptance Criteria`. Set ticket to "In Progress", fill start date.
 
 **SM Cleanup (post-mission):** Create session log, update handoff doc, update ticket. Existing: archive blackboard/traces, retrospective.
+
+**Model & effort tiering.** The `(opus)`/`(sonnet)` hints in the tables above are legacy tier labels — set the actual model and reasoning effort via each agent's `agents/` frontmatter (`model: inherit`) plus this guidance. The Orchestrator inherits the session model. Both reviewing Challengers run at **high** reasoning effort — a review squad's whole value is depth of scrutiny, so this is the last place to economize. The Scrum Master is haiku-class / low effort.
 
 ---
 
@@ -179,115 +181,54 @@ This is **quorum sensing applied to code review:**
 
 ## Spawn Example
 
+Install the custom agent types once (`cp agents/*.md .claude/agents/`). Both
+reviewers are the same `challenger` agent — the lens (correctness vs. security)
+is injected in the charge, which is exactly how the blind protocol stays
+cognitively diverse without needing two agent files. Spawn with a `name`
+(addressable via `SendMessage`). If task tools are available, mirror the phases
+for visibility; otherwise the trace files gate the blind protocol.
+
 ```python
-TeamCreate(team_name="review-{ticket}", description="Blind review of {PR/changes}")
+# Orchestrator — usually the session lead fills this seat directly.
+# Spawn the agent form only when synthesis is delegated.
+Agent(subagent_type="orchestrator", name="facilitator", run_in_background=True,
+      prompt="""You are The Orchestrator.
+Mission: review {PR/changes} for quality and safety.
+Blackboard: .claude/hive/memory/active/blackboard/{mission}.md
+Write Commander's Intent, assign each reviewer a named section, wait for all
+finding_submitted traces (the blind gate), take a breathing-space pass, then
+synthesize convergent / divergent / gap per the protocol above.""")
 
-# Tasks
-TaskCreate(subject="Frame review", description="Write Commander's Intent with PR reference")
-TaskCreate(subject="Correctness review", description="Independent review for bugs, logic errors, edge cases")
-TaskCreate(subject="Security review", description="Independent review for OWASP top 10, input validation, secrets")
-TaskCreate(subject="Synthesize findings", description="Categorize convergent/divergent, write recommendation")
+# Correctness Reviewer — Challenger + correctness lens. Read-only + Bash for tests.
+Agent(subagent_type="challenger", name="correctness-reviewer",
+      run_in_background=True,
+      prompt="""You are The Challenger with correctness lens.
+Focus: bugs, logic errors, edge cases, test-coverage gaps, behavioral regressions.
+Blackboard: .claude/hive/memory/active/blackboard/{mission}.md
+Write findings ONLY to "## Review: Correctness". Identify yourself as
+correctness-reviewer. DO NOT read other reviewers' sections until synthesis.
+When done, append the trace: {mission}-correctness-reviewer-finding_submitted.trace""")
 
-# Orchestrator
-Agent(subagent_type="general-purpose", name="facilitator",
-      team_name="review-{ticket}", model="opus",
-      prompt="""You are The Orchestrator (personas/orchestrator.md).
-Mission: Review {PR/changes} for quality and safety.
-Write Commander's Intent to blackboard, assign sections, wait for traces,
-then synthesize using concurrent blind review protocol.
-
-## CRITICAL: Context Budget
-
-Initialize the budget tracker at session start:
-  bash scripts/context-budget.sh init facilitator --profile orchestrator
-
-After each major operation (reading all reviewer sections, synthesis):
-  bash scripts/context-budget.sh tick facilitator --files-read {bytes}
-
-Monitor all agents' budget status. At YELLOW: increase checkpoint frequency.
-At RED: decide relay strategy per protocols/return-to-sangha.md.
-
-## CRITICAL: Shutdown Handling
-
-When you receive a message with type "shutdown_request", you MUST respond
-using the SendMessage tool with type "shutdown_response" and approve: true.
-Extract the requestId from the message and pass it as request_id.
-Do NOT just acknowledge it in text — you must actually call the tool.
-
-Example:
-  SendMessage(type="shutdown_response", request_id="<requestId from message>", approve=True)
-
-This is a hard requirement. Failure to respond terminates your session without
-clean exit and may leave orphaned team resources.""")
-
-# Correctness Reviewer
-Agent(subagent_type="general-purpose", name="correctness-reviewer",
-      team_name="review-{ticket}", model="sonnet",
-      prompt="""You are The Challenger with correctness lens (personas/challenger.md).
-Focus: bugs, logic errors, edge cases, test coverage gaps, behavioral regressions.
-Write findings ONLY to "## Review: Correctness" section on blackboard.
-DO NOT read other reviewers' sections.
-After writing findings, create trace: {mission}-correctness-reviewer-finding_submitted.trace
-
-## CRITICAL: Context Budget
-
-Initialize the budget tracker at session start:
-  bash scripts/context-budget.sh init correctness-reviewer --profile subagent
-
-After each major operation (file read, analysis):
-  bash scripts/context-budget.sh tick correctness-reviewer --files-read {bytes}
-
-At YELLOW: checkpoint immediately, increase write frequency.
-At RED: write final findings to blackboard, signal relay readiness to team lead.
-At CRITICAL: stop new work, re-read your checkpoint from the blackboard.
-
-## CRITICAL: Shutdown Handling
-
-When you receive a message with type "shutdown_request", you MUST respond
-using the SendMessage tool with type "shutdown_response" and approve: true.
-Extract the requestId from the message and pass it as request_id.
-Do NOT just acknowledge it in text — you must actually call the tool.
-
-Example:
-  SendMessage(type="shutdown_response", request_id="<requestId from message>", approve=True)
-
-This is a hard requirement. Failure to respond terminates your session without
-clean exit and may leave orphaned team resources.""")
-
-# Security Reviewer
-Agent(subagent_type="general-purpose", name="security-reviewer",
-      team_name="review-{ticket}", model="sonnet",
-      prompt="""You are The Challenger with security lens (personas/challenger.md).
-Focus: OWASP top 10, input validation, SQL injection, secrets exposure, access control.
-Write findings ONLY to "## Review: Security" section on blackboard.
-DO NOT read other reviewers' sections.
-After writing findings, create trace: {mission}-security-reviewer-finding_submitted.trace
-
-## CRITICAL: Context Budget
-
-Initialize the budget tracker at session start:
-  bash scripts/context-budget.sh init security-reviewer --profile subagent
-
-After each major operation (file read, analysis):
-  bash scripts/context-budget.sh tick security-reviewer --files-read {bytes}
-
-At YELLOW: checkpoint immediately, increase write frequency.
-At RED: write final findings to blackboard, signal relay readiness to team lead.
-At CRITICAL: stop new work, re-read your checkpoint from the blackboard.
-
-## CRITICAL: Shutdown Handling
-
-When you receive a message with type "shutdown_request", you MUST respond
-using the SendMessage tool with type "shutdown_response" and approve: true.
-Extract the requestId from the message and pass it as request_id.
-Do NOT just acknowledge it in text — you must actually call the tool.
-
-Example:
-  SendMessage(type="shutdown_response", request_id="<requestId from message>", approve=True)
-
-This is a hard requirement. Failure to respond terminates your session without
-clean exit and may leave orphaned team resources.""")
+# Security Reviewer — Challenger + security lens.
+Agent(subagent_type="challenger", name="security-reviewer",
+      run_in_background=True,
+      prompt="""You are The Challenger with security lens.
+Focus: OWASP top 10, input validation, injection, secrets exposure, access control.
+Blackboard: .claude/hive/memory/active/blackboard/{mission}.md
+Write findings ONLY to "## Review: Security". Identify yourself as
+security-reviewer. DO NOT read other reviewers' sections until synthesis.
+When done, append the trace: {mission}-security-reviewer-finding_submitted.trace""")
 ```
+
+**Shutdown.** No `shutdown_request` handshake, no team teardown. Each reviewer
+finishes, writes its findings + trace, and sends a completion message (carrying
+its farewell); the harness notifies the Orchestrator. Stop one early with
+`TaskStop <agent-id>` after preserving partial work. Lifecycle:
+`protocols/agent-shutdown.md`; farewell: `protocols/agent-farewell.md`.
+
+**Context.** Each agent watches its own context; if depleted, it writes the
+Living Baton per `protocols/return-to-sangha.md` and ends cleanly. No zone
+tables in spawn prompts.
 
 ---
 
@@ -309,7 +250,7 @@ This squad follows `protocols/definition-of-done.md`.
 Default level: `mission-complete` (override in Commander's Intent).
 
 The Scrum Master runs the Preflight checklist before Phase 1 (FRAME).
-The Facilitator verifies ACs against review findings during Phase 5 (SYNTHESIS).
+The Orchestrator verifies ACs against review findings during Phase 5 (SYNTHESIS).
 The Scrum Master runs the Cleanup checklist after the mission retrospective.
 
 ---

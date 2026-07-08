@@ -2,14 +2,19 @@
 
 ## Composition Table
 
+> **Vocabulary:** "Key Agents" names persona × lens, not distinct agent files.
+> "Architect·operator" = the Architect with an operator lens (the Implementer);
+> "Challenger·correctness" = the Challenger with a correctness lens (the Verifier).
+> One persona, many lenses — the lens is injected per spawn.
+
 | Terrain Profile | Squad Type | Size | Key Agents |
 |----------------|-----------|------|------------|
-| Low uncertainty, reversible, narrow, low stakes | **Focused Build** | 3 | Architect + Operator + Tester |
-| High uncertainty, any, any, any | **Research** | 3-4 | Orchestrator + 2 Investigators + optional Challenger |
+| Low uncertainty, reversible, narrow, low stakes | **Focused Build** | 3 | Architect (design) + Architect·operator (implement) + Challenger·correctness (verify) |
+| High uncertainty, any, any, any | **Research** | 3-4 | Orchestrator + 2 Investigators + optional Challenger — *overlaps Strategy on the uncertainty axis; see Tiebreaker (precedence favors REVERSIBILITY/STAKES)* |
 | Any, irreversible, any, high stakes | **Review** | 3-4 | Orchestrator + 2-3 Challengers (different lenses) |
-| Medium uncertainty, reversible, broad, medium stakes | **Full Engineering** | 4-5 | Orchestrator + Architect + Operator + Tester + optional Security |
+| Medium uncertainty, reversible, broad, medium stakes | **Full Engineering** | 4-5 | Orchestrator + Architect (design) + Architect·operator (implement) + Challenger·correctness (verify) + optional Challenger·security |
 | Need novel solutions, design alternatives | **Creative** | 4-5 | Orchestrator + 2-3 Innovators + Challenger (Evaluator) |
-| High uncertainty, irreversible, broad, high stakes | **Strategy** | 4-6 | Orchestrator + 2-4 Investigators + Challenger + Architect |
+| High uncertainty, irreversible, broad, high stakes | **Strategy** | 4-6 | Orchestrator + 2-4 Investigators + Challenger + Architect — *overlaps Research on the uncertainty axis; Tiebreaker precedence (irreversible + high stakes) selects Strategy* |
 | Conceptual ambiguity, deep understanding needed | **Philosophy** | 3 | Orchestrator + Investigator (Explorer) + Challenger (Socratic) |
 | Initiative spans multiple squad types | **Management** | 3-4 | Orchestrator + Architect (Decomposer) + Challenger (Risk/Monitor) |
 

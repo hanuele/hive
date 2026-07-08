@@ -22,7 +22,7 @@
 
 | Role | Persona | Tier | Responsibility |
 |------|---------|------|---------------|
-| **Facilitator** | Orchestrator | Orchestrator (opus) | Frames initiative, synthesizes execution plan |
+| **Orchestrator** (historically: Facilitator) | Orchestrator | Orchestrator (opus) | Frames initiative, synthesizes execution plan |
 | **Decomposer** | Architect | Specialist (sonnet) | Breaks initiative into squad-sized missions, maps dependencies |
 | **Risk Reviewer** | Challenger | Specialist (sonnet) | Identifies cross-mission risks, resource bottlenecks, irreversibility points |
 | **Scrum Master** (required) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), DoD preflight/cleanup (`protocols/definition-of-done.md`), operational fixes (parallel) |
@@ -43,6 +43,10 @@
 **Key:** 3 agents + SM plus sub-squads spawned at runtime. Expensive but powerful for large initiatives. The Meta-Orchestrator is one level above individual squad Orchestrators.
 
 **Escalation path:** Start with Focused Planning. Only escalate to Full Orchestration when the human finds manual squad launching is becoming the bottleneck. "Prove you need the complexity."
+
+**Model & effort tiering.** The `(opus)`/`(sonnet)` hints above are legacy tier labels — set the actual model and reasoning effort via each agent's `agents/` frontmatter (`model: inherit`) plus this guidance. The (Meta-)Orchestrator inherits the session model — decomposition and cross-squad integration are the deepest reasoning in the whole framework, so do not economize here. The Decomposer (Architect) and Risk-Reviewer/Monitor (Challenger) run high effort. The Scrum Master is haiku-class / low effort.
+
+**Spawn & lifecycle.** Install the custom agent types once (`cp agents/*.md .claude/agents/`); spawn the Decomposer as `subagent_type="architect"`, the Risk-Reviewer/Monitor as `subagent_type="challenger"`, each with a `name`. See `squads/research-squad.md` for the full spawn shape. Handoff contracts may flow as a blackboard section, a file, or task-tool state (`TaskCreate`/`TaskUpdate`) **if those tools are available in the session** — otherwise the blackboard is the handoff medium. In Full Orchestration the Meta-Orchestrator spawns sub-squads at runtime and reads their completion notifications; shutdown and context follow the standard rule (early stop = `TaskStop` after preserving work, per `protocols/agent-shutdown.md`; each agent watches its own context and writes the Living Baton per `protocols/return-to-sangha.md` if depleted).
 
 ---
 
@@ -287,7 +291,7 @@ This squad follows `protocols/definition-of-done.md`.
 Default level: `mission-complete` (override in Commander's Intent).
 
 The Scrum Master runs the Preflight checklist before Phase 1 (FRAME).
-The Facilitator verifies ACs against the execution plan during Phase 6 (SYNTHESIZE).
+The Orchestrator verifies ACs against the execution plan during Phase 6 (SYNTHESIZE).
 The Scrum Master runs the Cleanup checklist after the mission retrospective.
 
 ---

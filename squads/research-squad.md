@@ -5,7 +5,7 @@
 
 ## Upfront Parallelization
 
-Before spawning agents, Orchestrator (Facilitator) should assess task volume:
+Before spawning agents, Orchestrator should assess task volume:
 
 > "For research missions with >4 independent investigation threads, consider
 > spawning 2 Investigators from the start. See `protocols/dynamic-scaling.md §Upfront`."
@@ -21,11 +21,13 @@ findings to proceed (e.g., regulatory analysis vs. financial data).
 
 | Role | Persona | Tier | Responsibility |
 |------|---------|------|---------------|
-| **Facilitator** | Orchestrator | Orchestrator (opus) | Frames question, writes intent, synthesizes findings |
+| **Orchestrator** (historically: Facilitator) | Orchestrator | Orchestrator (opus) | Frames question, writes intent, synthesizes findings |
 | **Researcher A** | Investigator | Specialist (sonnet) | Data gathering, source triangulation |
 | **Researcher B** | Investigator (contrarian lens) | Specialist (sonnet) | Alternative hypotheses, assumption checking |
 | **Critic** (optional) | Challenger | Specialist | Adversarial review before synthesis |
 | **Scrum Master** (required) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol, DoD preflight/cleanup (`protocols/definition-of-done.md`), operational fixes (parallel) |
+
+**Model & effort tiering.** The `(opus)`/`(sonnet)` hints above are legacy tier labels — read them as "orchestrator-tier / specialist-tier," and set the actual model and reasoning effort via the guidance here plus each agent's `agents/` frontmatter (`model: inherit`). The Orchestrator inherits the session model. Investigators run at high reasoning effort (source triangulation and the confirmation-skepticism hook reward deeper thinking); the Critic/Challenger high. The Scrum Master is haiku-class / low effort — it is operational, not deliberative.
 
 ## Orchestration Pattern
 
@@ -66,7 +68,7 @@ This squad follows `protocols/definition-of-done.md`.
 Default level: `mission-complete` (override in Commander's Intent).
 
 The Scrum Master runs the Preflight checklist before Phase 1 (FRAME).
-The Facilitator verifies ACs against research findings during Synthesis (step 5).
+The Orchestrator verifies ACs against research findings during Synthesis (step 5).
 The Scrum Master runs the Cleanup checklist after the mission retrospective.
 
 ---
@@ -106,13 +108,13 @@ The Blind Divergence Protocol + Convergent Findings rules above are the *generic
 form: Investigators diverge via depth/breadth/contrarian heuristics over the
 problem's home domain. When the fan-out can't surface a *non-obvious alternative
 frame* — every investigator keeps returning the same near-domain hypothesis — switch
-them to the **`/wander`** procedure (`~/.claude/skills/wander/SKILL.md`): each blind
-Investigator names a domain-neutral skeleton and transposes an *executable* move from
-≥4 surface-FAR domains. Convergence by *different far domains* is the stronger signal
-(see `vault/patterns/2026-06-21-blind-parallel-fan-out-quality-primitive.md`). This is
-**gated** on the stuck-on-the-obvious-frame jam, not a default — and it rests on one
-worked example (the 2026-06-21 sangha-map spike), so treat it as encouraging, not yet
-codified at the 3-mission bar the rules above clear.
+them to a far-domain procedure: each blind Investigator names a domain-neutral skeleton
+and transposes an *executable* move from ≥4 surface-FAR domains. If a `/wander` skill is
+available in your environment, use it; otherwise drive the same reach by hand with the
+lateral heuristics in `differentiation/search-heuristics.md`. Convergence by *different
+far domains* is the stronger signal. This is **gated** on the stuck-on-the-obvious-frame
+jam, not a default — and it rests on one worked example, so treat it as encouraging, not
+yet codified at the 3-mission bar the rules above clear.
 
 ### Component Extraction as Deliverable (3 missions, CODIFIED 2026-03-05)
 Research outputs should decompose findings into named, independently-actionable
@@ -123,7 +125,7 @@ each component, its scope, estimated effort, and dependencies.
 
 ## Decision Protocol
 
-**Quorum sensing.** Finding is confirmed when 2+ independent agents converge. Facilitator synthesizes but domain expert outweighs generalist. **Convergent findings** (same conclusion reached independently by 2+ agents) are weighted as high-confidence — explicitly highlight these in synthesis output.
+**Quorum sensing.** Finding is confirmed when 2+ independent agents converge. Orchestrator synthesizes but domain expert outweighs generalist. **Convergent findings** (same conclusion reached independently by 2+ agents) are weighted as high-confidence — explicitly highlight these in synthesis output.
 
 See `constitutions/commitment-threshold.md` for quorum rules.
 
@@ -132,12 +134,12 @@ See `constitutions/commitment-threshold.md` for quorum rules.
 - **Fan-out phase:** 1 deliberation round per agent
 - **Breathing Space:** 1 reading pass
 - **Fan-in phase:** 1 synthesis pass
-- If convergence not reached, Facilitator issues a CONTESTED finding with all positions documented
+- If convergence not reached, Orchestrator issues a CONTESTED finding with all positions documented
 - **Total:** Bounded by 2 rounds, not unlimited
 
 ## Disagreement Protocol
 
-If two rounds of structured debate produce no convergence, the Facilitator does not add a third round. The Facilitator either:
+If two rounds of structured debate produce no convergence, the Orchestrator does not add a third round. The Orchestrator either:
 - **(a)** Reframes the question to find a solution space neither position occupies, or
 - **(b)** Escalates per escalation-rules.md (Tier 3a if reversible, Tier 3b if irreversible) with both positions documented in SBAR format
 
@@ -172,168 +174,52 @@ When using 2+ Investigators, differentiate via spawn prompt:
 
 ## Spawn Example (Claude Code)
 
+Install the custom agent types once (`cp agents/*.md .claude/agents/`), then
+spawn by type. Give each agent a `name` — it makes the running agent
+addressable via `SendMessage({to: "<name>", ...})`, and the name keeps working
+after the agent completes (a send resumes it). The persona lives in the agent
+definition now, so the charge is just mission + blackboard path + assigned lens.
+
+If task tools (`TaskCreate`/`TaskUpdate`) are available in this session, mirror
+the phases as tasks for visibility; otherwise track phases on the blackboard —
+neither is required for the squad to run.
+
 ```python
-# Create team
-TeamCreate(team_name="research-{topic}", description="{one-line research question}")
+# Two blind investigators, differentiated by lens in the charge (not the agent file).
+Agent(subagent_type="investigator", name="investigator-alpha",
+      run_in_background=True,
+      prompt="""Mission: [paste Commander's Intent].
+Blackboard: .claude/hive/memory/active/blackboard/{topic}.md
+Your lens: depth-first over the primary domain docs.
+Read the blackboard first. Identify yourself as investigator-alpha in every
+entry. Write findings + checkpoint per your agent definition. During fan-out,
+do NOT read peer findings before submitting your own.""")
 
-# Create tasks
-TaskCreate(subject="Frame mission", description="Write Commander's Intent...")
-TaskCreate(subject="Research {aspect-A}", description="Depth-first investigation...")
-TaskCreate(subject="Research {aspect-B}", description="Breadth-first investigation...")
-TaskCreate(subject="Synthesize findings", description="BLUF synthesis...")
+Agent(subagent_type="investigator", name="investigator-beta",
+      run_in_background=True,
+      prompt="""Mission: [paste Commander's Intent].
+Blackboard: .claude/hive/memory/active/blackboard/{topic}.md
+Your lens: breadth-first / contrarian across cross-domain references and known
+failure cases. Read the blackboard first. Identify yourself as investigator-beta.
+Blind fan-out: do NOT read peer findings before submitting your own.""")
 
-# Spawn teammates
-Agent(subagent_type="general-purpose", name="investigator-alpha",
-      team_name="research-{topic}",
-      prompt="""You are The Investigator. [paste personas/investigator.md]
-
-## CRITICAL: Task Scope
-
-Your ONLY assigned task is Task #{task_id}: [subject].
-Do NOT claim any other tasks from the task list.
-When your task is complete, write your final checkpoint to the blackboard,
-send the team-lead a completion message, then wait for a shutdown_request.
-
-## CRITICAL: Shutdown Handling
-
-When you receive a message with type "shutdown_request", you MUST respond
-using the SendMessage tool with type "shutdown_response" and approve: true.
-Extract the requestId from the message and pass it as request_id.
-Do NOT just acknowledge it in text — you must actually call the tool.
-
-Example:
-  SendMessage(type="shutdown_response", request_id="<requestId from message>", approve=True)
-
-This is a hard requirement. Failure to respond terminates your session without
-clean exit and may leave orphaned team resources.
-
-## CRITICAL: Dual Write — Findings AND Checkpoint
-
-Write to TWO sections on the blackboard, for different consumers:
-1. `## Findings` — timestamped BLUF entries for Orchestrator synthesis.
-   Format: `[HH:MM] FINDING: {one-line headline}\n{supporting detail}`
-2. `### Agent Checkpoints` in `## Current State` — state externalization for
-   context recovery (per protocols/checkpoint.md).
-
-Both sections MUST be populated. Findings are NOT optional even if checkpoint
-has the same information. Write to Findings after every discovery; write to
-Checkpoint after every 3 findings or before any long tool operation.
-
-## CRITICAL: Context Budget
-
-Initialize the budget tracker at session start:
-  bash scripts/context-budget.sh init investigator-alpha --profile subagent
-
-After each major operation (file read, web fetch, multi-step analysis):
-  bash scripts/context-budget.sh tick investigator-alpha --files-read {bytes}
-
-At YELLOW: checkpoint immediately, increase write frequency.
-At RED: write final findings to blackboard, signal relay readiness to team lead.
-At CRITICAL: stop new work, re-read your checkpoint from the blackboard. ...""")
-Agent(subagent_type="general-purpose", name="investigator-beta",
-      team_name="research-{topic}",
-      prompt="""You are The Investigator. [paste personas/investigator.md]
-
-## CRITICAL: Task Scope
-
-Your ONLY assigned task is Task #{task_id}: [subject].
-Do NOT claim any other tasks from the task list.
-When your task is complete, write your final checkpoint to the blackboard,
-send the team-lead a completion message, then wait for a shutdown_request.
-
-## CRITICAL: Shutdown Handling
-
-When you receive a message with type "shutdown_request", you MUST respond
-using the SendMessage tool with type "shutdown_response" and approve: true.
-Extract the requestId from the message and pass it as request_id.
-Do NOT just acknowledge it in text — you must actually call the tool.
-
-Example:
-  SendMessage(type="shutdown_response", request_id="<requestId from message>", approve=True)
-
-This is a hard requirement. Failure to respond terminates your session without
-clean exit and may leave orphaned team resources.
-
-## CRITICAL: Dual Write — Findings AND Checkpoint
-
-Write to TWO sections on the blackboard, for different consumers:
-1. `## Findings` — timestamped BLUF entries for Orchestrator synthesis.
-   Format: `[HH:MM] FINDING: {one-line headline}\n{supporting detail}`
-2. `### Agent Checkpoints` in `## Current State` — state externalization for
-   context recovery (per protocols/checkpoint.md).
-
-Both sections MUST be populated. Findings are NOT optional even if checkpoint
-has the same information. Write to Findings after every discovery; write to
-Checkpoint after every 3 findings or before any long tool operation.
-
-## CRITICAL: Context Budget
-
-Initialize the budget tracker at session start:
-  bash scripts/context-budget.sh init investigator-beta --profile subagent
-
-After each major operation (file read, web fetch, multi-step analysis):
-  bash scripts/context-budget.sh tick investigator-beta --files-read {bytes}
-
-At YELLOW: checkpoint immediately, increase write frequency.
-At RED: write final findings to blackboard, signal relay readiness to team lead.
-At CRITICAL: stop new work, re-read your checkpoint from the blackboard. ...""")
-
-# Scrum Master (recommended — runs in parallel with all phases)
-Agent(subagent_type="general-purpose", name="scrum-master",
-      team_name="research-{topic}", model="sonnet",
-      prompt="""You are The Scrum Master. [paste personas/scrum-master.md]
-
-Your mission: [paste Commander's Intent]
-
-You run IN PARALLEL with all other agents. You are NOT in the trace
-dependency chain. Your responsibilities:
-
-1. PREFLIGHT (before Phase 1): Run DoD preflight per protocols/definition-of-done.md:
-   - Check ticket exists for mission (WARN if missing, don't block)
-   - Check ticket has acceptance criteria (WARN if missing)
-   - Extract ACs to blackboard ## Acceptance Criteria section
-   - Set ticket to "In Progress", fill start date
-   - Read error catalog, pre-warn team about relevant ERR entries
-2. DURING MISSION: Monitor for failures, log crystallization_candidate events
-   to events.jsonl for significant findings
-3. POST-MISSION CLEANUP: Run DoD cleanup per protocols/definition-of-done.md:
-   - Create session log
-   - Update handoff doc
-   - Update ticket (comment + due date)
-4. POST-MISSION CRYSTALLIZATION: Run Crystallization Protocol Steps 1-2.5:
-   - HARVEST: Collect crystallization candidates from events.jsonl + blackboard
-   - PATTERN: Update `memory/active/pattern-tracker.md` — read it, match this
-     mission's candidates, increment counts, flag new PROMOTE candidates
-   - DISCERNMENT: For patterns at 3+ occurrences, classify as
-     seed-to-water / seed-to-let-rest / seed-we-don't-understand
-   - Write PROMOTE proposals (if any) to blackboard ## Operational Status
-5. CLEANUP: Run protocols/mission-cleanup.md (archive traces + blackboard)
-
-Write ONLY to "## Operational Status" on the blackboard.
-
-## CRITICAL: Shutdown Handling
-
-When you receive a message with type "shutdown_request", you MUST respond
-using the SendMessage tool with type "shutdown_response" and approve: true.
-Extract the requestId from the message and pass it as request_id.
-Do NOT just acknowledge it in text — you must actually call the tool.
-
-Example:
-  SendMessage(type="shutdown_response", request_id="<requestId from message>", approve=True)
-
-This is a hard requirement. Failure to respond terminates your session without
-clean exit and may leave orphaned team resources.
-
-## CRITICAL: Context Budget
-
-Initialize the budget tracker at session start:
-  bash scripts/context-budget.sh init scrum-master --profile subagent
-
-After each major operation:
-  bash scripts/context-budget.sh tick scrum-master --files-read {bytes}
-
-Monitor ALL agents' budget status:
-  bash scripts/context-budget.sh render-all
-
-Render budget status to blackboard ## Relay Baton → ### Budget Status on zone changes.""")
+# Scrum Master — runs in parallel with all phases, not in the trace chain.
+Agent(subagent_type="scrum-master", name="scrum-master",
+      run_in_background=True,
+      prompt="""Mission: [paste Commander's Intent].
+Blackboard: .claude/hive/memory/active/blackboard/{topic}.md
+Run DoD preflight (protocols/definition-of-done.md), monitor for failures during
+the mission, then own post-mission crystallization + cleanup per your agent
+definition. Write ONLY to ## Operational Status.""")
 ```
+
+**Shutdown.** No `shutdown_request` handshake and no team teardown. A background
+agent finishes its charge, writes its final blackboard entry, and sends a
+completion message (carrying its farewell) — the harness notifies you
+automatically. To stop one early, use `TaskStop <agent-id>` after preserving any
+partial work. Full lifecycle: `protocols/agent-shutdown.md`; the "Rest well"
+close: `protocols/agent-farewell.md`.
+
+**Context.** Each agent watches its own context; if depleted, it writes the
+Living Baton to the blackboard per `protocols/return-to-sangha.md` and ends
+cleanly. No zone tables in spawn prompts.

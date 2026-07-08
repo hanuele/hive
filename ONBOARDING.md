@@ -1,29 +1,42 @@
 # Hive Onboarding Guide
 
 > From zero to your first multi-agent mission in 15 minutes.
+>
+> **Tested against:** mechanics verified against Claude Code (July 2026 — Claude 5 /
+> Fable 5 generation). Agents spawn via the `Agent` tool with a `name`; there is no
+> Agent-Teams feature flag, no `TeamCreate`/`TeamDelete`, and no team teardown.
 
 ## 1. Prerequisites
 
 - **Claude Code** CLI installed ([docs](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview))
-- **Agent Teams** enabled: set environment variable `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
 - A project with a working codebase (the Hive needs something to investigate)
 
-Verify Agent Teams is available:
+That's it. Multi-agent spawning is a first-class part of the harness — you spawn
+a subagent with the `Agent` tool (`subagent_type`, `name`, `prompt`, optional
+`model` / `isolation` / `run_in_background`). No environment variable or feature
+flag is required. Verify by spawning a trivial read-only agent:
 
-```bash
-claude   # Start Claude Code
-# Type: TeamCreate(team_name="test", description="test")
-# If it works, Agent Teams is enabled. Clean up: TeamDelete
+```
+Agent(subagent_type="Explore", name="smoke-test",
+      prompt="Read README.md and report its top-level headings.")
 ```
 
-## 1.5 The Overlay Model
+If it returns, you're ready. (`Explore` is the built-in read-only search agent.)
 
-The Hive's resolution model is a two-layer overlay: a **framework** layer
-(constitutions, protocols, personas, terrain, differentiation, memory
+## 1.5 The Overlay Model — Target Design (not yet implemented)
+
+> **Current behavior:** `bootstrap.sh` **flat-copies** the framework into
+> `<your-project>/.claude/hive/`. There is no live framework/overlay resolution
+> yet — what you get is one merged copy per project. The two-layer model below is
+> the intended design; treat it as the direction of travel, not how the tool
+> behaves today.
+
+The Hive's *intended* resolution model is a two-layer overlay: a **framework**
+layer (constitutions, protocols, personas, terrain, differentiation, memory
 patterns — global, single point of truth) sits behind a **per-project
 overlay** (squads, project-specific orchestrator persona, briefings,
 project runtime state — `<your-project>/.claude/hive/`). Project files
-take precedence when present; the framework is the fallback.
+would take precedence when present; the framework is the fallback.
 
 Files that diverge across projects (squads, project READMEs) belong in
 the overlay. Files that should be canonical across the lineage (the
@@ -49,39 +62,48 @@ git clone https://github.com/hanuele/hive.git /tmp/hive
 
 # Option B: Manual copy
 mkdir -p /path/to/your/project/.claude/hive
-cp -r /tmp/hive/personas /tmp/hive/squads /tmp/hive/constitutions \
+cp -r /tmp/hive/personas /tmp/hive/agents /tmp/hive/squads /tmp/hive/constitutions \
       /tmp/hive/protocols /tmp/hive/terrain /tmp/hive/differentiation \
       /tmp/hive/memory /tmp/hive/_verification /tmp/hive/GLOSSARY.md \
       /tmp/hive/integration-guide.md /tmp/hive/DOMAIN-INJECTION.md \
       /path/to/your/project/.claude/hive/
 
+# Install the agent types so the harness can spawn them by subagent_type.
+# (Bootstrap Option A does this for you.)
+mkdir -p /path/to/your/project/.claude/agents
+cp /tmp/hive/agents/*.md /path/to/your/project/.claude/agents/
+
 # Commit the hive to your project
 cd /path/to/your/project
-git add .claude/hive/
+git add .claude/hive/ .claude/agents/
 git commit -m "feat: add Hive multi-agent framework"
 ```
 
+**Why the `agents/` copy matters:** `personas/` is the narrative source of truth,
+but the harness spawns custom agents from `.claude/agents/*.md`. Copying the six
+installable agent definitions there is what lets you write
+`Agent(subagent_type="investigator", …)` instead of pasting a whole persona into
+every spawn prompt. See `agents/README.md` for how the two stay in sync.
+
 ## 3. What to Customize
 
-Open `DOMAIN-INJECTION.md` in the Hive repo. It lists **2 required** and **4 optional** customizations.
+`bootstrap/DOMAIN-INJECTION-CHECKLIST.md` is the **single authoritative checklist**
+for placeholder work — every `{PLACEHOLDER}`, where it appears, and its verification
+step. `DOMAIN-INJECTION.md` gives the narrative rationale; the checklist is what you
+work through.
 
 At minimum, replace:
 - `{PROJECT_TEST_COMMAND}` — your project's test runner (e.g., `npm test`, `pytest`, `cargo test`)
-- `{MIGRATION_SPECIALIST}` — your migration/schema review agent (or remove the augmentation rule if not applicable)
+- `{MIGRATION_SPECIALIST}` — your migration/schema review agent (or, absent one, read it as a Challenger with a migration lens; or remove the augmentation rule if not applicable)
+
+The generic `agents/scrum-master.md` also carries project placeholders (issue
+tracker, credentials, status names) — the checklist lists them all.
 
 ## 4. First Mission Walkthrough: Research Squad
 
 This walkthrough runs a 3-agent Research Squad to investigate a topic in your codebase. Replace `{your-topic}` with something your project needs to understand (e.g., "error handling patterns", "authentication flow", "data validation gaps").
 
-### Step 1: Create the team
-
-In Claude Code, run:
-
-```
-TeamCreate(team_name="research-{your-topic}", description="Investigate {your-topic}")
-```
-
-### Step 2: Create the blackboard
+### Step 1: Create the blackboard
 
 Copy the template:
 
@@ -106,121 +128,85 @@ Edit the blackboard. Fill in the Commander's Intent section:
 **Consequences of failure:** {What happens if we get this wrong?}
 ```
 
-### Step 3: Create tasks
+### Step 2 (optional): Mirror the phases as tasks
+
+If task tools are available in this session (`TaskCreate`/`TaskUpdate` — they are
+present in some environments, absent in others), create one task per phase for
+visibility. If they aren't available, skip this step entirely — the blackboard and
+the trace files track progress on their own.
 
 ```
-TaskCreate(subject="Research {aspect-A} — depth-first", description="Investigate {your-topic} with depth-first lens. Focus on primary domain files. Write findings to blackboard.")
-TaskCreate(subject="Research {aspect-B} — breadth-first", description="Investigate {your-topic} with breadth-first lens. Look across the codebase for patterns. Write findings to blackboard.")
+TaskCreate(subject="Research {aspect-A} — depth-first", description="Investigate {your-topic}, depth-first lens. Write findings to blackboard.")
+TaskCreate(subject="Research {aspect-B} — breadth-first", description="Investigate {your-topic}, breadth-first lens. Write findings to blackboard.")
 TaskCreate(subject="Synthesize findings", description="Read all findings on blackboard. Write BLUF synthesis. File retrospective.")
 ```
 
-### Step 4: Spawn the agents
+### Step 3: Spawn the agents
 
-Read the persona files first to include in spawn prompts:
-
-```
-Read .claude/hive/personas/investigator.md
-Read .claude/hive/personas/orchestrator.md
-Read .claude/hive/protocols/bluf-format.md
-```
-
-Spawn two investigators:
+Because you installed `agents/` into `.claude/agents/` (Step 2 of Installation),
+the persona already lives in the agent definition — you do **not** paste it into
+the prompt. The charge is just the mission, the blackboard path, and the lens.
+Spawn with a `name` so each agent is addressable via `SendMessage`, and
+`run_in_background=True` so they work concurrently.
 
 ```
 Agent(
-  subagent_type="general-purpose",
+  subagent_type="investigator",
   name="investigator-alpha",
-  team_name="research-{your-topic}",
-  model="sonnet",
-  prompt="You are The Investigator.
-
-[Paste full content of personas/investigator.md here]
-
-MISSION:
-[Paste Commander's Intent from the blackboard]
-
-YOUR TASK: Research {aspect-A} with a depth-first lens. Focus on primary implementation files.
-
-INSTRUCTIONS:
-1. Read the Commander's Intent on the blackboard at .claude/hive/memory/active/blackboard/{your-topic}.md
-2. Research {aspect-A} thoroughly
-3. Write your findings to the blackboard under '## Findings' using this format:
-   - [HH:MM] investigator-alpha: {finding} (confidence: {0.0-1.0}) (source: {file/url})
-4. Follow BLUF format (protocols/bluf-format.md)
-5. When done, write a trace: echo '{\"ts\":\"...\",\"mission\":\"{your-topic}\",\"agent\":\"investigator-alpha\",\"action\":\"finding_submitted\",\"detail\":\"...\"}' > .claude/hive/memory/active/traces/{your-topic}-alpha-finding_submitted.trace
-6. Mark your task as completed
-
-## CRITICAL: Shutdown Handling
-When you receive a shutdown_request message, respond with shutdown_response (approve: true) immediately."
+  run_in_background=True,
+  prompt="Mission: [paste Commander's Intent from the blackboard].
+Blackboard: .claude/hive/memory/active/blackboard/{your-topic}.md
+Your lens: depth-first over primary implementation files.
+Read the blackboard first. Identify yourself as investigator-alpha in every entry.
+Write findings to '## Findings' as: [HH:MM] investigator-alpha: {finding} (confidence: 0.0-1.0) (source: {file/url}).
+Follow BLUF (protocols/bluf-format.md). During fan-out, do NOT read peer findings first.
+When done, append the trace: {your-topic}-alpha-finding_submitted.trace"
 )
-```
 
-```
 Agent(
-  subagent_type="general-purpose",
+  subagent_type="investigator",
   name="investigator-beta",
-  team_name="research-{your-topic}",
-  model="sonnet",
-  prompt="You are The Investigator.
-
-[Paste full content of personas/investigator.md here]
-
-MISSION:
-[Paste Commander's Intent from the blackboard]
-
-YOUR TASK: Research {aspect-B} with a breadth-first lens. Look across the codebase for patterns and cross-references.
-
-INSTRUCTIONS:
-1. Read the Commander's Intent on the blackboard at .claude/hive/memory/active/blackboard/{your-topic}.md
-2. Research {aspect-B} broadly
-3. Write your findings to the blackboard under '## Findings'
-4. Follow BLUF format
-5. Write a trace when done
-6. Mark your task as completed
-
-## CRITICAL: Shutdown Handling
-When you receive a shutdown_request message, respond with shutdown_response (approve: true) immediately."
+  run_in_background=True,
+  prompt="Mission: [paste Commander's Intent].
+Blackboard: .claude/hive/memory/active/blackboard/{your-topic}.md
+Your lens: breadth-first — patterns and cross-references across the codebase.
+Read the blackboard first. Identify yourself as investigator-beta. Write findings
+to '## Findings'. Blind fan-out: do NOT read peer findings before submitting yours.
+When done, append the trace: {your-topic}-beta-finding_submitted.trace"
 )
 ```
 
-### Step 5: Wait, then synthesize
+### Step 4: Wait, then synthesize
 
-Wait for both investigators to complete. Then synthesize:
+The two investigators run in the background; the harness notifies you as each
+completes. When both are done, synthesize. The Orchestrator seat is usually yours
+(the session lead) — you can run the synthesis directly, or delegate it to an
+`orchestrator` agent:
 
 ```
 Agent(
-  subagent_type="general-purpose",
+  subagent_type="orchestrator",
   name="orchestrator",
-  team_name="research-{your-topic}",
-  model="sonnet",
-  prompt="You are The Orchestrator.
-
-[Paste full content of personas/orchestrator.md here]
-
-MISSION:
-[Paste Commander's Intent]
-
-YOUR TASK: Synthesize the research findings.
-
-INSTRUCTIONS:
-1. Read the full blackboard at .claude/hive/memory/active/blackboard/{your-topic}.md
-2. Take a BREATHING SPACE: read everything once without acting (protocols/breathing-space.md)
-3. Synthesize using the protocol at protocols/synthesis-template.md
-4. Write your synthesis to the blackboard under a new '## Synthesis' section
-5. Run Knowledge Crystallization (protocols/crystallization.md Steps 1-2.5)
-6. Write a retrospective to memory/archive/retrospectives/{your-topic}-retro.md using the template at memory/archive/retrospectives/_template.md
-7. Mark the synthesis task as completed
-
-## CRITICAL: Shutdown Handling
-When you receive a shutdown_request message, respond with shutdown_response (approve: true) immediately."
+  prompt="Mission: [paste Commander's Intent].
+Blackboard: .claude/hive/memory/active/blackboard/{your-topic}.md
+1. Read the full blackboard.
+2. Take a BREATHING SPACE — read everything once without acting (protocols/breathing-space.md).
+3. Synthesize using protocols/synthesis-template.md; write it under a new '## Synthesis' section.
+4. Run Knowledge Crystallization (protocols/crystallization.md Steps 1-2.5).
+5. Write a retrospective to memory/archive/retrospectives/{your-topic}-retro.md (template alongside)."
 )
 ```
 
-### Step 6: Clean up
+### Step 5: Done — nothing to tear down
 
-```
-TeamDelete
-```
+There is no team to delete. Background agents finish, write their final
+blackboard entries, and send completion messages (each carrying its farewell);
+the harness notifies you. If you need to stop a running agent early, use
+`TaskStop <agent-id>` after preserving its partial work (see
+`protocols/agent-shutdown.md`). To ask a completed agent a follow-up, just
+`SendMessage({to: "investigator-alpha", …})` — a named agent resumes with its
+context intact. The mission's lasting artifacts are the blackboard and the
+retrospective; archival is handled by `protocols/mission-cleanup.md`.
 
 ## 5. Understanding the Output
 
@@ -245,56 +231,41 @@ After the mission completes, you'll find:
 
 ## 6. Troubleshooting
 
-### "Already leading team" error
-
-A previous session ended without cleaning up:
-
-```
-Error: Already leading team "old-team-name". A leader can only manage one team at a time.
-```
-
-**Fix:** Call `TeamDelete` to clear the stale team. If that fails:
-
-```bash
-rm -rf ~/.claude/teams/{old-team-name} && rm -rf ~/.claude/tasks/{old-team-name}
-```
-
-Then call `TeamDelete` again and proceed with `TeamCreate`.
-
-**Prevention:** Always call `TeamDelete` at the end of a mission.
-
 ### Empty blackboard after mission
 
 Agents didn't write to the blackboard. Common causes:
-- Blackboard path was wrong in spawn prompt (check exact path)
-- Agent didn't have write permissions (use `subagent_type="general-purpose"`, not `explorer`)
-- Agent ran out of context before writing
+- Blackboard path was wrong in the spawn prompt (check the exact path).
+- A write-role agent was spawned with a read-only type. A read-only agent
+  (`Explore`, or a custom type with no `Bash`) cannot append findings. Use the
+  right `agents/` type for the role — read-only roles (investigator, challenger,
+  innovator) still write to the blackboard via `Bash` append, so they need `Bash`
+  in their allowlist, which the shipped agent files already grant.
+- The agent ran out of context before writing. Its charge should tell it to
+  checkpoint early and often (per `protocols/checkpoint.md`).
 
-**Fix:** Check agent output for errors. Re-run with corrected spawn prompt.
+**Fix:** Check the agent's completion message for errors, then re-spawn with a
+corrected charge.
 
-### Designer can't write trace
+### Agent can't write a file it should be able to
 
-If using `subagent_type="explorer"` (read-only), the agent cannot write files.
+Subagents can read anywhere but can only **write inside the session's working
+directories**. A write to another repo silently lands nowhere.
 
-**Fix:** Use `subagent_type="general-purpose"` for all agents that need to write (traces, blackboard entries, findings).
-
-### Stale team cleanup
-
-If `~/.claude/teams/` or `~/.claude/tasks/` directories accumulate:
-
-```bash
-# List all teams
-ls ~/.claude/teams/
-
-# Remove a specific stale team
-rm -rf ~/.claude/teams/{team-name} && rm -rf ~/.claude/tasks/{team-name}
-```
+**Fix:** For code changes in a repo, spawn the write-role with
+`isolation="worktree"` (it gets an isolated copy to modify). For cross-repo work,
+use the agents-research / orchestrator-writes split — the agent returns a plan or
+diff, and you (in the session's working dirs) apply it. See the Engineering Squad
+for both patterns.
 
 ### Agent produces unstructured output
 
-The agent didn't follow BLUF format. This is a prompt issue.
+The agent didn't follow BLUF format.
 
-**Fix:** Include the full persona narrative in the spawn prompt (not just "you are The Investigator"). The narrative provides the reasoning context that produces structured behavior.
+**Fix:** Confirm you spawned it by its installed `subagent_type` (so it carries the
+full persona), not with a bare "you are The Investigator" line. The persona
+narrative — including its metacognitive hooks — is what produces structured
+behavior; that's the whole reason `agents/` exists. If you must spawn without the
+installed type, paste the matching `personas/*.md` into the prompt.
 
 ## 7. Learning Path
 
