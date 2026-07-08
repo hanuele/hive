@@ -4,9 +4,24 @@
 
 ## Design Principle
 
-Agents in a sequential pipeline need to know when upstream work is complete before starting their own. Rather than polling teammates or relying on message delivery, agents write trace files to the shared filesystem. Downstream agents poll for the expected trace before beginning their phase.
+Start from the reality of the runtime: Hive agents are **message-driven**. An
+agent is spawned for a phase, does its work, and completes — the harness
+notifies the spawner. Sequencing between phases is handled by the orchestrator
+(or the human in Focused Build), who spawns the downstream agent *after* the
+upstream one has completed. There is no live polling loop; a downstream agent
+checks for its expected upstream trace **once**, when it starts.
 
-This is **stigmergy** — coordination through shared environment, not through messaging.
+So traces are not a gate the runtime blocks on. They are **durable evidence of
+completion** — a small, write-once record on the shared filesystem that says
+"this phase finished, here is a one-line summary of what it produced." Their
+value is for **resumption** (a fresh agent after compaction can see what is
+already done without re-reading the whole blackboard) and for **audit** (the
+mission record shows the pipeline actually advanced stage by stage).
+
+This is **stigmergy** — coordination through marks left in the shared
+environment rather than through direct back-and-forth messaging. The
+blackboard says *what* was done; the trace says *that* it was done, cheaply and
+verifiably.
 
 ---
 
@@ -58,8 +73,14 @@ Single JSON line (no pretty-printing, no trailing newline):
 | `tests_complete` | Tests written and executed, results on blackboard | Verifier (Engineering Squad) |
 | `finding_submitted` | Review finding written to named blackboard section | Reviewer (Review Squad) |
 | `synthesis_complete` | Orchestrator synthesis written to blackboard | Orchestrator |
-| `breathing_space_complete` | Facilitator has completed reading pass | Orchestrator |
+| `breathing_space_complete` | Orchestrator has completed reading pass | Orchestrator |
 | `retrospective_complete` | Retrospective filed to archive | Orchestrator |
+
+The "Written By" names (Designer, Reviewer, Implementer, Verifier, ...) are
+squad roles — each a persona paired with a lens, as defined in `squads/` — not
+separate personas. The same Challenger persona writes `finding_submitted` with
+a correctness lens or a security lens; the same Implementer persona works
+whichever change plan it is given.
 
 Custom actions are allowed but must be documented in the mission's Commander's Intent.
 
@@ -81,17 +102,24 @@ The agent also logs a corresponding event to `events.jsonl`:
 {"ts":"...","mission":"...","agent":"...","event":"trace_written","detail":"Action: {action}"}
 ```
 
-### Reading a Trace (Downstream Gating)
+### Reading a Trace (One Check at Start)
 
-Before starting work, a downstream agent checks for the expected upstream trace:
+A downstream agent is spawned by the orchestrator only after its upstream phase
+has completed, so the trace is normally already there. The agent reads it
+**once**, at the start of its turn — as a confirmation and to pick up the
+one-line summary of what the upstream phase produced:
 
 ```bash
-# Check if designer has completed design
+# Confirm the design phase completed, and read its summary
 cat .claude/hive/memory/active/traces/{mission}-designer-design_complete.trace
 ```
 
-**If trace exists:** Read the detail, then proceed with own phase.
-**If trace does not exist:** Wait. The upstream agent has not completed its phase.
+**If the trace exists:** read the `detail`, then proceed with your own phase.
+**If it is missing:** do not spin in a wait loop — there is no polling here.
+The agent notes the gap in its blackboard section and messages the orchestrator
+(the sequencer) that the expected upstream evidence is absent. The orchestrator
+either points the agent at the right trace or corrects the sequencing. This is
+a one-time check, not a live gate.
 
 ### Trace Gating in Squad Templates
 

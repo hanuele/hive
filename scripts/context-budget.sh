@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
-# context-budget.sh -- Context budget tracker (Protocol OS bridge)
+# context-budget.sh -- Protocol-OS bridge for the context zone signal.
 #
-# Reads context zone from Protocol OS session traces. One-directional:
-# Hive reads Protocol OS state, Protocol OS doesn't know about Hive.
+# Reads zone_transition events from ~/.claude/traces/{session_id}.jsonl when
+# present, and reports the current zone (GREEN/YELLOW/RED). When no traces are
+# available it reports UNKNOWN, and the qualitative fallback described in
+# protocols/return-to-sangha.md applies (self-check symptoms, not a counter).
+# This is a one-directional bridge: Hive reads Protocol-OS state; Protocol-OS
+# does not know about Hive. It is OPTIONAL environment integration — a Hive can
+# run fine without it, using the qualitative self-check instead.
 #
 # Zone source: ~/.claude/traces/{session_id}.jsonl
 #   event: "zone_transition", to_zone: "green"/"yellow"/"red"
@@ -15,13 +20,13 @@
 #   render-all
 #   reset <agent>
 #
-# State files: C:/tmp/hive-budget-{session_id}-{agent}.state
-# Requires: SESSION_ID env var or --session-id flag
+# State files: ${TMPDIR:-/tmp}/hive-budget-{session_id}-{agent}.state
+# Requires: SESSION_ID env var or --session-id flag (accepted by any subcommand)
 
 set -euo pipefail
 
 TRACES_DIR="$HOME/.claude/traces"
-STATE_PREFIX="C:/tmp/hive-budget"
+STATE_PREFIX="${TMPDIR:-/tmp}/hive-budget"
 
 get_session_id() {
   if [ -n "${SESSION_ID:-}" ]; then
@@ -69,6 +74,7 @@ cmd_init() {
       *) shift ;;
     esac
   done
+  mkdir -p "$(dirname "$STATE_PREFIX")"
   local sf
   sf=$(state_file "$agent")
   local sid
@@ -181,6 +187,16 @@ cmd_reset() {
   echo "Reset budget tracker for $agent"
 }
 
+# Pre-parse a global --session-id flag so any subcommand can accept it.
+_args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --session-id) SESSION_ID="${2:?--session-id requires a value}"; shift 2 ;;
+    *) _args+=("$1"); shift ;;
+  esac
+done
+set -- ${_args[@]+"${_args[@]}"}
+
 subcmd="${1:-help}"
 shift 2>/dev/null || true
 
@@ -192,8 +208,8 @@ case "$subcmd" in
   render-all) cmd_render_all ;;
   reset)      cmd_reset "$@" ;;
   help|*)
-    echo "context-budget.sh — Protocol OS budget bridge"
-    echo "Zone source: ~/.claude/traces/{SESSION_ID}.jsonl"
+    echo "context-budget.sh — Protocol-OS bridge for the context zone signal"
+    echo "Zone source: ~/.claude/traces/{SESSION_ID}.jsonl (reports UNKNOWN if absent)"
     echo ""
     echo "Subcommands:"
     echo "  init <agent> [--profile subagent]"
@@ -203,6 +219,6 @@ case "$subcmd" in
     echo "  render-all"
     echo "  reset <agent>"
     echo ""
-    echo "Requires: SESSION_ID env var"
+    echo "Session id: SESSION_ID env var, or --session-id <id> on any subcommand"
     ;;
 esac

@@ -1,34 +1,29 @@
 # Failure Escalation
 
-When agents encounter disagreements or blocking issues, The Hive uses a structured five-level escalation path. Each level attempts resolution before passing to the next. The path is designed so that routine disagreements are resolved between agents (L1-L2), significant or irreversible decisions involve the Orchestrator (L3), blocking issues require a human gate (L4), and unresolvable situations trigger a mission abort (L5).
+When agents encounter disagreements or blocking issues, The Hive uses a four-tier partnership escalation path (see `protocols/escalation-rules.md`). Each tier attempts resolution before passing upward: routine disagreements resolve between agents (Tier 1), significant ones go to the Orchestrator (Tier 2), reversible in-scope decisions are resolved autonomously by Claude acting as the partnership layer (Tier 3a), and irreversible or high-stakes decisions require the human partner (Tier 3b).
 
 ```mermaid
 flowchart TD
-    START([Issue Detected]) --> L1
+    START([Issue Detected]) --> T1
 
-    L1[L1: Agent Self-Correction\nRetry with adjusted approach\nMax 2 attempts]
-    L1 --> D1{Resolved?}
+    T1[Tier 1: Agent-to-Agent<br/>Structured debate, 2 rounds max<br/>Each position backed by evidence]
+    T1 --> D1{Resolved?}
     D1 -- Yes --> DONE([Issue Resolved])
-    D1 -- No --> L2
+    D1 -- No --> T2
 
-    L2[L2: Peer Consult\nStructured debate between agents\n2 rounds max, evidence required]
-    L2 --> D2{Resolved?}
+    T2[Tier 2: Agent-to-Orchestrator<br/>Orchestrator weighs both positions and evidence<br/>Decides, requests more data, or reframes]
+    T2 --> D2{Resolved?}
     D2 -- Yes --> DONE
-    D2 -- No --> L3
+    D2 -- No, or beyond scope --> T3A
 
-    L3[L3: Orchestrator Review\nReviews both positions and evidence\nMay reframe or request more data]
-    L3 --> D3{Resolved?}
-    D3 -- Yes --> DONE
-    D3 -- No --> D3B{Blocking or\nirreversible\nor security?}
-    D3B -- No --> L3_retry[Orchestrator requests\nadditional investigation]
-    L3_retry --> D3
-    D3B -- Yes --> L4
+    T3A[Tier 3a: Orchestrator-to-Claude<br/>Partnership layer resolves reversible,<br/>in-scope decisions autonomously]
+    T3A --> D3A{Reversible and in-scope<br/>with no irreversible<br/>side effects?}
+    D3A -- Yes --> RES3A[Claude resolves<br/>Documents on blackboard under Decisions]
+    RES3A --> DONE
+    D3A -- No --> T3B
 
-    L4[L4: Human Gate\nOrchestrator presents both positions,\nevidence, and recommendation\nMission pauses for human input]
-    L4 --> D4{Human\napproves\ncontinue?}
-    D4 -- Yes --> DONE
-    D4 -- No,\nabort --> L5
-
-    L5[L5: Mission Abort\nDocument findings to blackboard\nRun mission cleanup protocol\nFile retrospective]
-    L5 --> ABORT([Mission Aborted])
+    T3B[Tier 3b: Claude-to-Human Partner<br/>Irreversible, security, financial accuracy,<br/>uncertainty, or blocking disagreement<br/>Claude presents positions, evidence, recommendation]
+    T3B --> D3B{Human partner<br/>decides}
+    D3B -- Approve / continue --> DONE
+    D3B -- Reject / halt --> HALT([Action not taken<br/>Documented for retrospective])
 ```

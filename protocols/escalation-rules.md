@@ -6,16 +6,16 @@
 
 Structured debate, 2 rounds max. Each agent presents position with evidence. If unresolved after 2 rounds, escalate to Tier 2.
 
-## Tier 2 — Agent-to-Facilitator
+## Tier 2 — Agent-to-Orchestrator
 
 **For:** SIGNIFICANT disagreements
 
-Facilitator reviews both positions + evidence, decides or requests more data. The Facilitator may:
+The Orchestrator reviews both positions + evidence, decides or requests more data. The Orchestrator may:
 - Decide based on evidence weight
 - Request additional investigation from one or both agents
 - Reframe the question to find a solution space neither position occupies
 
-## Tier 3a — Facilitator-to-Claude (Partnership Tier)
+## Tier 3a — Orchestrator-to-Claude (Partnership Tier)
 
 **For:** Reversible decisions, design disputes, scope questions, prioritization
 
@@ -61,9 +61,9 @@ Claude presents the escalation with both positions, evidence, and a recommendati
 ```
 Agent → Agent (Tier 1: structured debate, 2 rounds)
   ↓ unresolved
-Agent → Facilitator (Tier 2: evidence-based decision)
+Agent → Orchestrator (Tier 2: evidence-based decision)
   ↓ unresolved or beyond scope
-Facilitator → Claude (Tier 3a: autonomous resolution of reversible decisions)
+Orchestrator → Claude (Tier 3a: autonomous resolution of reversible decisions)
   ↓ irreversible, uncertain, or unresolvable
 Claude → Human Partner (Tier 3b: human judgment for high-stakes decisions)
 ```

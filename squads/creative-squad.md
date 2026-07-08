@@ -20,13 +20,17 @@
 
 | Role | Persona | Tier | Responsibility |
 |------|---------|------|---------------|
-| **Facilitator** | Orchestrator | Orchestrator (opus) | Writes creative brief, selects top ideas, synthesizes final output |
+| **Orchestrator** (historically: Facilitator) | Orchestrator | Orchestrator (opus) | Writes creative brief, selects top ideas, synthesizes final output |
 | **Ideator A** | Innovator | Specialist (sonnet) | Independent idea generation (diverge phase) |
 | **Ideator B** | Innovator (different heuristic) | Specialist (sonnet) | Independent idea generation from different angle |
 | **Evaluator** | Challenger | Specialist (sonnet) | Ranks ideas against criteria, stress-tests selected ideas |
 | **Scrum Master** (required) | Scrum Master | Specialist (sonnet) | Jira ops, error catalog, crystallization protocol (update `memory/active/pattern-tracker.md`), DoD preflight/cleanup (`protocols/definition-of-done.md`), operational fixes (parallel) |
 
 Optional: A third Ideator (Innovator with contrarian or analogical heuristic) for maximum divergence.
+
+**Model & effort tiering.** The `(opus)`/`(sonnet)` hints above are legacy tier labels — set the actual model and reasoning effort via each agent's `agents/` frontmatter (`model: inherit`) plus this guidance. The Orchestrator inherits the session model. Ideators (Innovators) run at medium-to-high reasoning effort — generation benefits from headroom, but the divergence itself does more work than raw depth. The Evaluator (Challenger) runs high (stress-testing is scrutiny work). The Scrum Master is haiku-class / low effort.
+
+**Spawn & lifecycle.** Install the custom agent types once (`cp agents/*.md .claude/agents/`) and spawn Ideators as `subagent_type="innovator"` with a `name`, injecting each one's heuristic in the charge (the agent file is generic; the heuristic is per-spawn). The Evaluator is `subagent_type="challenger"`. See `squads/research-squad.md` for the full spawn shape. Shutdown and context follow the same rule as every squad: a background agent finishes and the harness notifies you (early stop = `TaskStop` after preserving partial work, per `protocols/agent-shutdown.md`); each agent watches its own context and, if depleted, writes the Living Baton per `protocols/return-to-sangha.md` and ends cleanly.
 
 ## Orchestration Pattern: Hybrid (Diamond + Iteration)
 
@@ -214,7 +218,7 @@ This squad follows `protocols/definition-of-done.md`.
 Default level: `mission-complete` (override in Commander's Intent).
 
 The Scrum Master runs the Preflight checklist before Phase 1 (FRAME).
-The Facilitator verifies ACs against creative output during Phase 6 (SYNTHESIZE).
+The Orchestrator verifies ACs against creative output during Phase 6 (SYNTHESIZE).
 The Scrum Master runs the Cleanup checklist after the mission retrospective.
 
 ---
@@ -226,4 +230,4 @@ The Scrum Master runs the Cleanup checklist after the mission retrospective.
 - **Innovator persona is central.** This is the primary squad for The Innovator. Other squads may include Innovators for specific creative subtasks, but the Creative Squad is built around them.
 - **The Evaluator is a Challenger, not an Architect.** Evaluation is about finding weaknesses, not designing solutions. The Innovator refines; the Challenger evaluates.
 - **Creative heuristics are supplemental.** They live in `differentiation/creative-heuristics.md` as an optional overlay on top of the standard search heuristics. The Orchestrator picks based on the creative brief.
-- **Lateral fan-out (/wander far-domain variant), gated.** The Blind Divergence Protocol above is the *generic* form — Ideators diverge via depth/breadth/contrarian heuristics. When those heuristics keep landing the *obvious* frame (the DIVERGE output reads as variations on a theme, not a reframe), switch the Ideators to the **`/wander`** procedure (`~/.claude/skills/wander/SKILL.md`): each blind Ideator names a domain-neutral skeleton and transposes an *executable* move from ≥4 surface-FAR domains. Convergence by *different far domains* is an even stronger signal than convergence via the same heuristic family — see `vault/patterns/2026-06-21-blind-parallel-fan-out-quality-primitive.md`. **Gated:** reach for it only when ordinary ideation has stalled on the obvious frame; it is the far-domain specialization of blind divergence, not a default phase.
+- **Lateral fan-out (far-domain variant), gated.** The Blind Divergence Protocol above is the *generic* form — Ideators diverge via depth/breadth/contrarian heuristics. When those heuristics keep landing the *obvious* frame (the DIVERGE output reads as variations on a theme, not a reframe), switch the Ideators to a far-domain procedure: each blind Ideator names a domain-neutral skeleton and transposes an *executable* move from ≥4 surface-FAR domains. If a `/wander` skill is available in your environment, use it (its fan-out mode runs blind wanderers in parallel); otherwise drive the same reach by hand with the lateral heuristics in `differentiation/creative-heuristics.md`. Convergence by *different far domains* is an even stronger signal than convergence via the same heuristic family. **Gated:** reach for it only when ordinary ideation has stalled on the obvious frame; it is the far-domain specialization of blind divergence, not a default phase.

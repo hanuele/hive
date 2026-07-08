@@ -16,11 +16,13 @@
 # What it does:
 #   1. Detects or accepts the target project root
 #   2. Verifies it is a Claude Code project
-#   3. Copies the Hive framework into target/.claude/hive/
+#   3. Copies the Hive framework (incl. scripts/ and DOMAIN-INJECTION.md) into target/.claude/hive/
 #   4. Copies bootstrap rules into target/.claude/rules/
 #   5. Copies the assess-terrain skill into target/.claude/skills/
-#   6. Appends the CLAUDE-SNIPPET.md to target CLAUDE.md (idempotent)
-#   7. Prints the DOMAIN-INJECTION-CHECKLIST.md so you know what to fill in
+#   6. Copies the Hive agent definitions into target/.claude/agents/ (so squads can spawn them)
+#   7. Appends the CLAUDE-SNIPPET.md to target CLAUDE.md (idempotent)
+#   8. Self-verifies: counts remaining {PLACEHOLDER} tokens in the installed tree
+#   9. Prints the DOMAIN-INJECTION-CHECKLIST.md so you know what to fill in
 # =============================================================================
 
 set -euo pipefail
@@ -86,7 +88,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --help|-h)
-      sed -n '3,20p' "$0" | sed 's/^# \?//'
+      sed -n '3,25p' "$0" | sed 's/^# \?//'
       exit 0
       ;;
     *)
@@ -130,8 +132,11 @@ fi
 
 # ---- Step 3: Copy Hive framework --------------------------------------------
 echo ""
-info "Step 3/7 — Copying Hive framework..."
+info "Step 3/9 — Copying Hive framework..."
 
+# NOTE: "scripts" is copied into .claude/hive/scripts/ so that persona/protocol references
+# like "scripts/context-budget.sh" resolve relative to the hive root (.claude/hive/).
+# Each dir copy below is guarded by an if-exists check, so a partial source tree only warns.
 HIVE_DIRS=(
   "personas"
   "squads"
@@ -141,10 +146,12 @@ HIVE_DIRS=(
   "differentiation"
   "_verification"
   "memory"
+  "scripts"
 )
 HIVE_FILES=(
   "integration-guide.md"
   "GLOSSARY.md"
+  "DOMAIN-INJECTION.md"
 )
 
 DEST_HIVE="${TARGET}/.claude/hive"
@@ -175,7 +182,7 @@ done
 
 # ---- Step 4: Copy bootstrap rules -------------------------------------------
 echo ""
-info "Step 4/7 — Copying rules..."
+info "Step 4/9 — Copying rules..."
 
 DEST_RULES="${TARGET}/.claude/rules"
 BOOTSTRAP_RULES="${HIVE_ROOT}/bootstrap/rules"
@@ -200,7 +207,7 @@ fi
 
 # ---- Step 5: Copy assess-terrain skill --------------------------------------
 echo ""
-info "Step 5/7 — Copying assess-terrain skill..."
+info "Step 5/9 — Copying assess-terrain skill..."
 
 DEST_SKILL="${TARGET}/.claude/skills/assess-terrain"
 SRC_SKILL="${HIVE_ROOT}/bootstrap/skills/assess-terrain"
@@ -215,9 +222,46 @@ else
   warn "bootstrap/skills/assess-terrain/ not found — skipping."
 fi
 
-# ---- Step 6: Append CLAUDE-SNIPPET.md to CLAUDE.md -------------------------
+# ---- Step 6: Copy Hive agent definitions into .claude/agents/ ---------------
 echo ""
-info "Step 6/7 — Updating CLAUDE.md..."
+info "Step 6/9 — Installing Hive agents..."
+
+# Agents live in .claude/agents/ (NOT .claude/hive/agents/) because that is where
+# Claude Code discovers subagent definitions. Installing them here is what lets the
+# squads actually spawn the named agents they reference.
+SRC_AGENTS="${HIVE_ROOT}/agents"
+DEST_AGENTS="${TARGET}/.claude/agents"
+
+if [ -d "$SRC_AGENTS" ]; then
+  agent_count=0
+  for agent_file in "${SRC_AGENTS}"/*.md; do
+    [ -f "$agent_file" ] || continue
+    filename="$(basename "$agent_file")"
+    # Only install real agent definitions: a Claude Code agent begins with a YAML
+    # frontmatter block carrying a `name:` field. This skips docs like README.md that
+    # would otherwise land in .claude/agents/ and confuse the agent loader.
+    if [ "$(head -n 1 "$agent_file")" != "---" ] || ! grep -qE '^name:[[:space:]]' "$agent_file"; then
+      info "Skipping non-agent file (no frontmatter): ${filename}"
+      continue
+    fi
+    dest_file="${DEST_AGENTS}/${filename}"
+    if [ -f "$dest_file" ]; then
+      warn "Agent already exists, skipping: ${filename} (delete it first to overwrite)"
+    else
+      copy_item "$agent_file" "$dest_file"
+      agent_count=$((agent_count + 1))
+    fi
+  done
+  if [ "$DRY_RUN" = false ]; then
+    info "Installed ${agent_count} Hive agent definition(s) into .claude/agents/ — squads can now spawn them as named background agents."
+  fi
+else
+  warn "No agents/ directory found at ${SRC_AGENTS} — skipping (squads will have no agent definitions to spawn)."
+fi
+
+# ---- Step 7: Append CLAUDE-SNIPPET.md to CLAUDE.md -------------------------
+echo ""
+info "Step 7/9 — Updating CLAUDE.md..."
 
 SNIPPET_FILE="${HIVE_ROOT}/bootstrap/CLAUDE-SNIPPET.md"
 TARGET_CLAUDE="${TARGET}/CLAUDE.md"
@@ -244,9 +288,33 @@ else
   fi
 fi
 
-# ---- Step 7: Print domain injection checklist --------------------------------
+# ---- Step 8: Self-verify — count remaining placeholders ---------------------
 echo ""
-info "Step 7/7 — Domain injection checklist"
+info "Step 8/9 — Verifying placeholders..."
+
+if [ "$DRY_RUN" = true ]; then
+  info "[dry-run] Would count {PLACEHOLDER} tokens in the installed tree."
+else
+  # Count remaining {UPPER_SNAKE} tokens across the installed docs. Restricted to *.md so
+  # the copied shell scripts (whose ${VAR} references also look like {TOKEN}) don't inflate
+  # the count. A few framework runtime tokens ({NNN}, {N}, {MISSION}, …) still match and are
+  # meant to stay — the checklist's "Runtime tokens" table lists them. This is a nudge toward
+  # the checklist, not a hard gate.
+  placeholder_count=$(grep -rhoE --include='*.md' '\{[A-Z_]+\}' \
+    "${DEST_HIVE}" \
+    "${TARGET}/.claude/rules" \
+    "${TARGET}/.claude/skills/assess-terrain" \
+    2>/dev/null | sort -u | wc -l | tr -d ' ')
+  if [ "${placeholder_count:-0}" -gt 0 ]; then
+    warn "${placeholder_count} distinct {PLACEHOLDER} token(s) await your values — see DOMAIN-INJECTION-CHECKLIST.md (Required, Optional, and Integration-layer tables). Runtime tokens listed there are expected to remain."
+  else
+    success "No {PLACEHOLDER} tokens found in the installed tree."
+  fi
+fi
+
+# ---- Step 9: Print domain injection checklist --------------------------------
+echo ""
+info "Step 9/9 — Domain injection checklist"
 echo ""
 
 CHECKLIST="${HIVE_ROOT}/bootstrap/DOMAIN-INJECTION-CHECKLIST.md"

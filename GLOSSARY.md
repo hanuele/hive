@@ -11,16 +11,18 @@
 | **Codified Pattern** | A pattern that has been promoted from observation to a documented rule after 3+ mission occurrences (see Crystallization) |
 | **Definition of Done (DoD)** | Mission completion checklists at two levels: `solo-complete` (tests, ACs, session log, handoff) and `mission-complete` (adds retrospective, crystallization, cleanup) |
 | **Domain Injection** | The process of customizing generic Hive files with project-specific values by replacing `{PLACEHOLDER}` tokens |
-| **Facilitator** | The agent (typically Orchestrator or Scrum Master) who mediates Tier 2 escalations between disagreeing agents |
+| **Facilitator** | Alias for the **Orchestrator** in its Tier 2 role — mediating escalations between disagreeing agents. Not a separate role; the Orchestrator is the mediator (see `personas/orchestrator.md`, `protocols/escalation-rules.md`). |
 | **Fan-out / Fan-in** | Research pattern: multiple agents investigate in parallel (fan-out), then findings are synthesized (fan-in) |
 | **Hive** | The complete multi-agent team system (personas, squads, protocols, memory) |
 | **Lens** | A differentiation axis injected via spawn prompt that shifts a persona's focus without creating a new persona (e.g., `operator`, `correctness`) |
 | **Living Baton** | A continuously updated blackboard section (`## Relay Baton`) that captures enough state for a fresh agent to resume mid-mission after context compaction |
 | **Mission** | A bounded team effort with intent, blackboard, tasks, and retrospective |
+| **Workflow-native mission** | A mission run through Claude Code's native workflow mechanism rather than blackboard-and-spawn squad orchestration (see `protocols/workflow-missions.md`) |
 | **Squad** | A pre-designed team template for a problem type (Research, Engineering, Review, Creative, Strategy, Philosophy, Management) |
 | **Blackboard** | Shared markdown workspace for stigmergic coordination |
 | **Persona** | Narrative identity defining an agent's thinking style and blind spots |
 | **Agent** | A Claude model instance with a persona, role, and task assignment |
+| **Agent definition (agents/)** | A `.claude/agents/*.md` file — the installable form of a persona that makes it spawnable as a Claude Code agent. Lives in `agents/`; the bootstrap installs it to your project's `.claude/agents/` |
 | **Orchestrator** | Opus-tier agent responsible for mission framing and synthesis |
 | **Productive Waiting** | Using blocked time constructively: pre-reading files, reviewing the blackboard, loading context for an upcoming phase instead of sitting idle |
 | **Scrum Master** | Operational specialist: error catalog, issue tracking, crystallization, cleanup |
@@ -53,6 +55,4 @@ Scout (haiku) is not used for Hive squad roles. Standalone agents retain their o
 > Tracked vocabulary changes. When a replacement reaches "approved" status,
 > it will be applied across all Hive files in a dedicated rename pass.
 
-| Current Term | Replacement | Status | Scope | Notes |
-|-------------|-------------|--------|-------|-------|
-| spawn | invite | pending | All hive files | Agent creation metaphor — "invite" is more collaborative |
+*None pending.* **"spawn"** is the canonical term for agent creation across all Hive docs. (An earlier "spawn → invite" proposal was dropped — every document uses "spawn"; renaming would cost more coherence than the metaphor gains.)

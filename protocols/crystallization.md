@@ -77,26 +77,32 @@ For each candidate pattern, ask:
 
 This transforms the Crystallization Spiral from a neutral learning system into a discerning one — one that learns what to become, not just what happened.
 
-### Step 2.75 — ARCHIVE (mycelium, optional)
+### Step 2.75 — ARCHIVE (mycelium, OPTIONAL environment integration)
 
-When Neo4j is available, archive the mission's structured findings,
-decisions, and deeper patterns to the mycelium graph. This creates
-a queryable knowledge layer across all missions — enabling questions
-like "which missions found issues with X?" or "what decisions were
-made about Y across all squads?"
+> **This step is an optional, environment-specific integration.** It depends on
+> the author's setup — a Neo4j mycelium graph and the `ingest-hive-findings.py`
+> script under `~/.claude/scripts/`. If that script is absent (as it will be in
+> most environments) or Neo4j is unavailable, **skip this step entirely**; the
+> crystallization pipeline is complete without it.
 
-**Run:**
+When the mycelium graph is available, archive the mission's structured findings,
+decisions, and deeper patterns to it. This creates a queryable knowledge layer
+across all missions — enabling questions like "which missions found issues with
+X?" or "what decisions were made about Y across all squads?"
+
+**Run (only if the script exists):**
 ```bash
 python3 ~/.claude/scripts/ingest-hive-findings.py \
     .claude/hive/memory/active/blackboard/{mission-name}.md \
     --mission-id "hive/{mission-name}"
 ```
 
-**Graceful degradation:** If Neo4j is unavailable, the script logs
-`[WARN]` and exits cleanly. This step NEVER blocks the crystallization
-pipeline — document-based crystallization (Steps 1-2.5) is the primary
-record; mycelium is the enrichment layer. The Scrum Master simply skips
-this step with a note in Operational Status.
+**Graceful degradation:** If the script is missing or Neo4j is unavailable, the
+step is skipped (the script itself logs `[WARN]` and exits cleanly when present
+but disconnected). This step NEVER blocks the crystallization pipeline —
+document-based crystallization (Steps 1-2.5) is the primary record; mycelium is
+an enrichment layer that only some environments have. The Scrum Master notes the
+skip in Operational Status.
 
 **What gets archived:**
 - `## Findings` — as `HiveFinding` nodes with confidence, source, agent
@@ -182,7 +188,8 @@ git commit -m "feat: codify patterns from $(basename $(pwd)) crystallization
 
 $(git diff --cached --stat)
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+Co-Authored-By: Claude <model name> <noreply@anthropic.com>"
+# ^ use your current model name (e.g. Claude Fable 5)
 ```
 
 After committing, ask the user whether to push to the public repository.

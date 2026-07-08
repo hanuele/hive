@@ -8,13 +8,15 @@ When spawning 2+ agents on the same problem, assign different perspective frames
 
 ## Frames
 
-| Frame | When to Use | Spawn Prompt Injection | What It Surfaces |
-|-------|------------|----------------------|-----------------|
-| **Risk** | Security audits, migration reviews, credential handling | "Evaluate every finding through a risk lens — what could go wrong, what is the blast radius, what is the likelihood?" | Failure modes, attack surfaces, hidden dependencies that other frames treat as benign |
-| **Design** | Architecture decisions, API design, schema changes | "Evaluate through a design lens — what is the simplest viable approach, what are the tradeoffs, what will be hard to change later?" | Coupling, premature abstraction, missing constraints, over-engineering |
-| **Efficiency** | Performance optimization, cost reduction, pipeline streamlining | "Evaluate through an efficiency lens — what is the cost (time, compute, tokens), where are the bottlenecks, what can be eliminated?" | Waste, redundant steps, cheaper alternatives that other frames overlook |
-| **User** | Feature design, documentation, visualization, error messages | "Evaluate through a user lens — who will use this output, what decision will they make with it, what would confuse them?" | Usability gaps, missing context, implicit assumptions that experts don't notice |
-| **Systems** | Cross-service changes, data flow analysis, integration work | "Evaluate through a systems lens — what are the upstream/downstream effects, what state changes propagate, where are the boundaries?" | Emergent behavior, cascade failures, integration gaps between components |
+Each frame has three parts: a one-line **definition** (what it asks of the problem), a **search bias** (how it directs attention — inject this into the spawn prompt), and the **characteristic failure** it surfaces that other frames treat as benign.
+
+| Frame | Definition | Search bias (spawn injection) | Characteristic failure surfaced |
+|-------|-----------|-------------------------------|---------------------------------|
+| **Risk** | What could go wrong, how bad would it be, and how likely is it? | "Evaluate every finding through a risk lens — weigh likelihood × blast radius, and hunt failure modes and attack surfaces before benefits." | Failure modes, attack surfaces, hidden dependencies that other frames treat as benign. |
+| **Design** | What is the simplest viable structure, and what will be hard to change later? | "Evaluate through a design lens — weigh the tradeoffs and the future cost of change; find the constraint that should shape the approach." | Coupling, premature abstraction, missing constraints, over-engineering. |
+| **Efficiency** | What does this cost in time, compute, and tokens, and where is the waste? | "Evaluate through an efficiency lens — follow the cost, find the bottleneck, and name the step that could be eliminated or made cheaper." | Waste, redundant steps, cheaper alternatives that other frames overlook. |
+| **User** | Who uses this output, and what decision will they make with it? | "Evaluate through a user lens — read as the end user; ask what context is missing and what would confuse a non-expert." | Usability gaps, missing context, implicit assumptions that experts don't notice. |
+| **Systems** | What are the upstream/downstream effects, and where are the boundaries? | "Evaluate through a systems lens — trace state changes across boundaries; map what propagates and where components meet." | Emergent behavior, cascade failures, integration gaps between components. |
 
 ## Combining with Search Heuristics
 

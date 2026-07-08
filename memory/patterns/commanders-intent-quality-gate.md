@@ -54,7 +54,7 @@ may silently correct or propagate them.
 
 ## Retrospective References
 
-- `memory/archive/retrospectives/kan229-json-validation-retro.md`
-- `memory/archive/retrospectives/kan220-hardcoded-secrets-retro.md`
-- `memory/archive/retrospectives/commanders-intent-checklist-retro.md`
-- `memory/archive/retrospectives/lassonde-classification-retro.md`
+- `memory/archive/retrospectives/kan229-json-validation-retro.md` (archived in the origin project — not shipped with the framework)
+- `memory/archive/retrospectives/kan220-hardcoded-secrets-retro.md` (archived in the origin project — not shipped with the framework)
+- `memory/archive/retrospectives/commanders-intent-checklist-retro.md` (archived in the origin project — not shipped with the framework)
+- `memory/archive/retrospectives/lassonde-classification-retro.md` (archived in the origin project — not shipped with the framework)

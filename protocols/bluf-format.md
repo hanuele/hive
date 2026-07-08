@@ -19,7 +19,7 @@ APPENDIX: Full details (only if requested)
 
 BLUF is a format contract rooted in communal care — an unstructured message is not a personal failing but a communication that has not yet served the team.
 
-The Facilitator persona includes an explicit brief to:
+The Orchestrator, as the mission's synthesizer and facilitator (see `personas/orchestrator.md`), is responsible for:
 1. Return unstructured messages to the sender with the guidance: *"I received your finding but could not quickly extract the key point. Could you restructure it so the team can act on it efficiently?"*
 2. Log the non-compliance as a P2-IMPORTANT event for the post-mission retrospective.
 
@@ -30,7 +30,7 @@ Agents that consistently produce unstructured messages are flagged in the Crysta
 | Level | Meaning | Delivery | Tone | Expected Response | Timeout |
 |-------|---------|----------|------|-------------------|---------|
 | P0-EMERGENCY | Safety/security | Interrupts current work | Spare and clear | Immediate action or escalation | 1 round → escalate to human |
-| P1-BLOCKING | Cannot proceed | Processed next | Direct with minimal context | Acknowledge within current task | Raised twice → escalate to Facilitator |
+| P1-BLOCKING | Cannot proceed | Processed next | Direct with minimal context | Acknowledge within current task | Raised twice → escalate to Orchestrator |
 | P2-IMPORTANT | Affects quality | Batched at sync point | Thoughtful with context | Acknowledge at sync point | Sync passes without review → promote to P1 |
 | P3-INFO | FYI only | Logged, not delivered | Reflective, may include uncertainty | No response required | No escalation |
 

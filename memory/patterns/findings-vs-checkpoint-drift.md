@@ -62,6 +62,6 @@ quality varies depending on whether agents happen to write to the right section.
 
 ## Retrospective References
 
-- `memory/archive/retrospectives/verify-context-renewal-retro.md`
-- `memory/archive/retrospectives/hive-20260304-lassonde-durrett-viz-retro.md`
-- `memory/archive/retrospectives/hive-20260304-nightly-package-2-retro.md`
+- `memory/archive/retrospectives/verify-context-renewal-retro.md` (archived in the origin project — not shipped with the framework)
+- `memory/archive/retrospectives/hive-20260304-lassonde-durrett-viz-retro.md` (archived in the origin project — not shipped with the framework)
+- `memory/archive/retrospectives/hive-20260304-nightly-package-2-retro.md` (archived in the origin project — not shipped with the framework)

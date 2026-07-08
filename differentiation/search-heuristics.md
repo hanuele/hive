@@ -28,19 +28,21 @@ Standard assignment for 2-3 investigator clones (from `squads/research-squad.md`
 ## Spawn Example
 
 ```
-Agent(subagent_type="general-purpose", name="investigator-alpha",
-      team_name="research-{topic}",
-      prompt="You are The Investigator. [paste personas/investigator.md]
-             Search heuristic: depth-first.
+Agent(subagent_type="investigator",   # the agents/investigator.md definition, if installed;
+      name="investigator-alpha",      # else "general-purpose" + [paste personas/investigator.md]
+      run_in_background=True,
+      prompt="Search heuristic: depth-first.
              Focus: pick the most promising lead from the Commander's Intent
              and follow it to conclusion. Go deep, not wide.
+             Blackboard: [path]. Identify yourself as investigator-alpha in every entry.
              Reference material: [primary domain docs]")
 
-Agent(subagent_type="general-purpose", name="investigator-beta",
-      team_name="research-{topic}",
-      prompt="You are The Investigator. [paste personas/investigator.md]
-             Search heuristic: breadth-first.
+Agent(subagent_type="investigator",
+      name="investigator-beta",
+      run_in_background=True,
+      prompt="Search heuristic: breadth-first.
              Focus: survey the full landscape before diving deep.
+             Blackboard: [path]. Identify yourself as investigator-beta in every entry.
              Reference material: [cross-domain references]")
 ```
 

@@ -10,8 +10,8 @@ persona:
   version: string
 
   # Core identity
-  archetype: "investigator | challenger | architect | innovator | orchestrator"
-  thinking_style: "inductive | deductive | pragmatic | lateral | integrative"
+  archetype: "investigator | challenger | architect | innovator | orchestrator | scrum-master"
+  thinking_style: "inductive | deductive | pragmatic | lateral | integrative | systematic"
 
   # Cognitive profile
   cognitive_axes:
@@ -22,13 +22,27 @@ persona:
 
   # Behavioral constraints
   rules:
-    max_count: 5  # Cognitive load research on working memory
+    max_count: 6  # was 5 (working-memory research); raised to 6 — see note below
     items: list[string]
 
   # Self-awareness
   blind_spots: list[string]
   escalation_conditions: list[string]
 ```
+
+## A note on `max_count` vs. the live personas
+
+The original schema capped rules at 5, citing working-memory research. The active
+narrative personas have since drifted past it: the Investigator and Challenger
+carry 6 rules, and the Orchestrator carries 7. Rather than pretend the cap holds,
+this reference now documents `max_count: 6` and names the tension honestly.
+
+Two things reconcile the drift. First, the personas are *narrative*, not YAML —
+the rules are read as a coherent stance, not memorized as independent slots, so
+the working-memory ceiling that motivated "5" applies less forcefully (see below).
+Second, the Orchestrator's 7 is a genuine outlier worth watching: if its rule list
+keeps growing, that is a signal to split the role, not to keep raising the cap. The
+number is guidance for keeping a persona legible in ~30 seconds, not a hard limit.
 
 ## Why Narratives Over YAML
 

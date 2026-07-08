@@ -20,7 +20,7 @@
 
 | Role | Persona | Tier | Responsibility |
 |------|---------|------|---------------|
-| **Facilitator** | Orchestrator | Orchestrator (opus) | Frames strategic question, identifies key uncertainties, synthesizes robust actions |
+| **Orchestrator** (historically: Facilitator) | Orchestrator | Orchestrator (opus) | Frames strategic question, identifies key uncertainties, synthesizes robust actions |
 | **Scenario Builder A** | Investigator | Specialist (sonnet) | Builds and defends one scenario (owns it end-to-end) |
 | **Scenario Builder B** | Investigator | Specialist (sonnet) | Builds and defends another scenario |
 | **Scenario Builder C** (optional) | Investigator | Specialist (sonnet) | Third scenario (for 3+ uncertainty axes) |
@@ -39,6 +39,10 @@ The number of Scenario Builders matches the scenario count (flexible 2-4):
 | 2 axes (2x2 matrix) | 4 | 4 Investigators (may need human approval per dynamic-scaling.md) |
 
 Orchestrator decides scenario count based on the number and nature of key uncertainties.
+
+**Model & effort tiering.** The `(opus)`/`(sonnet)` hints above are legacy tier labels — set the actual model and reasoning effort via each agent's `agents/` frontmatter (`model: inherit`) plus this guidance. The Orchestrator inherits the session model. Scenario Builders (Investigators) run medium-to-high effort; the Stress-Tester (Challenger) and Response-Designer (Architect) run high — attacking scenarios and designing robust responses are the load-bearing reasoning. The Scrum Master is haiku-class / low effort.
+
+**Spawn & lifecycle.** Install the custom agent types once (`cp agents/*.md .claude/agents/`); spawn each Scenario Builder as `subagent_type="investigator"` with its scenario ownership injected in the charge (base / optimistic / pessimistic / wildcard), the Stress-Tester as `subagent_type="challenger"`, and the Response-Designer as `subagent_type="architect"` — each with a `name`. Unlike Research/Creative, scenario builders may read each other during generation (overlap is worse than anchoring here), so no blind gate is enforced. See `squads/research-squad.md` for the spawn shape. Shutdown/context follow the standard rule (`protocols/agent-shutdown.md`, `protocols/return-to-sangha.md`).
 
 ---
 
@@ -230,7 +234,7 @@ This squad follows `protocols/definition-of-done.md`.
 Default level: `mission-complete` (override in Commander's Intent).
 
 The Scrum Master runs the Preflight checklist before Phase 1 (FRAME).
-The Facilitator verifies ACs against strategic recommendation during Phase 6 (SYNTHESIZE).
+The Orchestrator verifies ACs against strategic recommendation during Phase 6 (SYNTHESIZE).
 The Scrum Master runs the Cleanup checklist after the mission retrospective.
 
 ---

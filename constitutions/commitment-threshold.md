@@ -6,11 +6,23 @@ Every decision protocol must define its quorum — the number of independent con
 
 ## Proceed Quorum (When to Commit)
 
-| Stakes Level | Quorum Required | Time Box | Escalation |
-|-------------|----------------|----------|------------|
-| **Low** (reversible, low cost) | 1 confirmation | 5 min | Auto-proceed after time box |
-| **Medium** (reversible, moderate cost) | 2 independent confirmations | 15 min | Lead decides after time box |
-| **High** (irreversible or high cost) | 3 independent + Tier 3b gate | 30 min | Escalate to human after time box |
+A "round" is one blackboard read-write cycle across the deliberating agents:
+each contributor writes its position (or update), and the facilitator reads the
+board. The forcing function is a *count of rounds without quorum*, not
+wall-clock time — agents do not perceive minutes, but they can count their own
+read-write rounds.
+
+| Stakes Level | Quorum Required | Deliberation Bound | Escalation |
+|-------------|----------------|--------------------|------------|
+| **Low** (reversible, low cost) | 1 confirmation | 1 round | Auto-proceed after the round |
+| **Medium** (reversible, moderate cost) | 2 independent confirmations | 2 rounds | Lead decides after 2 rounds without quorum |
+| **High** (irreversible or high cost) | 3 independent + Tier 3b gate | 3 rounds | Escalate to human after 3 rounds without quorum |
+
+> **Optional clock binding:** an environment with a scheduler (e.g. a heartbeat
+> or a cron surface) may bind these round bounds to real time as well — for
+> instance, "one round OR 5 minutes, whichever first." That binding is an
+> environment convenience; the round count is the portable, agent-perceivable
+> rule.
 
 ## Abandonment Quorum (When to Close an Alternative)
 

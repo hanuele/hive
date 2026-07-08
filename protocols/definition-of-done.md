@@ -30,13 +30,20 @@ Task tracking per project:
 
 If no formal tracker exists, ACs come from the Commander's Intent or a quick interview with Peter. The absence of Jira is a WARN, not a blocker.
 
-**Verification (Verifier or Facilitator, Phase 6):**
+Stack-specific verification steps (appended to the default gate below, per project — the default list stays stack-agnostic so the framework ports cleanly):
+| Project stack | Additional verification step |
+|---------------|-----------------------------|
+| Python + Alembic migrations | If a migration exists: `alembic upgrade head` + `alembic downgrade -1` + `alembic upgrade head` |
+| Containerized infra (Docker) | If diff touches infra files (Dockerfile, requirements.txt, docker-compose.yml, shared/): Docker build + health check |
+
+**Verification (Verifier or Orchestrator, Phase 6):**
 - [ ] Each AC verified individually (structured checklist on blackboard `## Acceptance Criteria Verification`)
 - [ ] Tests exist for all new/changed code (zero tests = FAIL, merge-blocking)
-- [ ] Full test suite passes (not just new tests)
+- [ ] `{PROJECT_TEST_COMMAND}` passes (full suite, not just new tests)
 - [ ] Coding guidelines compliance checked
-- [ ] If migration exists: `alembic upgrade head` + `alembic downgrade -1` + `alembic upgrade head`
-- [ ] If diff touches infra files (Dockerfile, requirements.txt, docker-compose.yml, shared/): Docker build + health check
+- [ ] No unresolved review findings
+- [ ] Stack-specific verification steps for this project pass (see the table above)
+- [ ] If quorum was not reached on a key question, an INSUFFICIENT BASIS finding (`protocols/insufficient-basis.md`) is recorded — "we do not know" is a completion-valid answer
 
 **Cleanup (Scrum Master, post-mission):**
 - [ ] Session log created (`docs/sessions/`)
@@ -65,14 +72,14 @@ Everything in `mission-complete` PLUS:
 | Squad | Has Verifier? | AC Verification Owner |
 |-------|--------------|----------------------|
 | Engineering | Yes | Verifier (standard) |
-| Review | No | Facilitator (checks ACs against review findings) |
-| Research | No | Facilitator (verifies research findings address ACs) |
-| Creative | No | Facilitator (verifies ideas address creative brief ACs) |
-| Strategy | No | Facilitator (verifies scenarios address strategic question ACs) |
-| Philosophy | No | Facilitator (verifies understanding addresses philosophical ACs) |
-| Management | No | Facilitator (verifies plan addresses initiative ACs) |
+| Review | No | Orchestrator (checks ACs against review findings) |
+| Research | No | Orchestrator (verifies research findings address ACs) |
+| Creative | No | Orchestrator (verifies ideas address creative brief ACs) |
+| Strategy | No | Orchestrator (verifies scenarios address strategic question ACs) |
+| Philosophy | No | Orchestrator (verifies understanding addresses philosophical ACs) |
+| Management | No | Orchestrator (verifies plan addresses initiative ACs) |
 
-For squads without a Verifier, the Facilitator verifies ACs as part of the Synthesis phase. The structured checklist format is the same regardless of who performs it.
+For squads without a Verifier, the Orchestrator verifies ACs as part of the Synthesis phase. The structured checklist format is the same regardless of who performs it.
 
 ---
 
@@ -88,11 +95,11 @@ The Scrum Master writes ACs to the blackboard during preflight:
 3. ...
 ```
 
-The Verifier (or Facilitator) writes verification results:
+The Verifier (or Orchestrator) writes verification results:
 
 ```markdown
 ## Acceptance Criteria Verification
-<!-- Written by Verifier/Facilitator during verification phase. -->
+<!-- Written by Verifier/Orchestrator during verification phase. -->
 Source: DD-XXX
 - [x] AC 1 text (PASS)
 - [ ] AC 2 text (FAIL -- reason)

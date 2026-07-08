@@ -5,9 +5,12 @@
 
 ## Philosophy
 
-Claude Code auto-compacts conversations at ~83.5% of the 200K token context window.
-This is a blunt summarization that loses nuance — decisions, reasoning chains, and
-partial findings vanish. The Hive and solo sessions both suffer.
+Claude Code auto-compacts a conversation when it approaches the end of its
+context window — the exact fraction and the window size vary by environment
+and change over time, so this protocol never hard-codes a number. What matters
+is that compaction is a blunt summarization that loses nuance — decisions,
+reasoning chains, and partial findings vanish. The Hive and solo sessions both
+suffer.
 
 **Return to Sangha** shifts context management from reactive (recover after compaction)
 to proactive (make compaction irrelevant). Agents write their wisdom to shared memory
@@ -16,7 +19,8 @@ to proactive (make compaction irrelevant). Agents write their wisdom to shared m
 The protocol has three components:
 
 1. **Living Baton** — event-driven writes to disk on meaningful events
-2. **Budget Tracker** — early-warning heuristic for context exhaustion
+2. **Zone Signal** — the environment's context-zone bridge if present, with a
+   qualitative self-check as the always-available fallback
 3. **Hierarchical State Machine** — structured tracking of mission/phase/agent states
 
 ---
@@ -92,67 +96,76 @@ Add to the session log's body:
 | Purpose | Agent's working state | Relay state for a fresh agent |
 | Audience | Same agent after compaction | A different agent who has never seen this conversation |
 | Location | Blackboard `### Agent Checkpoints` | Blackboard `## Relay Baton` |
-| Trigger | Every 3 findings / 15 turns | Every meaningful event |
+| Trigger | Every few findings, or when YELLOW-equivalent pressure appears | Every meaningful event |
 | Written by | Individual agent | Orchestrator (Hive) or solo agent |
 
 ---
 
-## Component 2: Budget Tracker
+## Component 2: Zone Signal
 
-A bash script (`scripts/context-budget.sh`) that tracks turn count and cumulative
-file sizes read. Returns approximate zone indicators. Not precise — there is no API
-for exact context usage — but provides useful time pressure signals.
+There is no reliable way to hard-count context usage from inside a session, and
+window sizes differ across environments (they range widely and change over
+time). So the zone signal has one **primary** source and one **fallback**, and
+you use whichever is available — never absolute token or turn counts.
 
-### Zones
+### Primary — the environment's zone/trace bridge
 
-| Zone | Solo Turns | Subagent Turns | Orchestrator Turns | Behavior |
-|------|-----------|---------------|-------------------|----------|
-| GREEN | 0-30 | 0-15 | 0-25 | Normal. Standard checkpoint frequency. |
-| YELLOW | 30-45 | 15-22 | 25-38 | Heightened. Checkpoint after every decision. Announce to user. |
-| RED | 45-55 | 22-28 | 38-48 | Finalize baton. Recommend relay. No new large reads. |
-| CRITICAL | 55+ | 28+ | 48+ | Compaction imminent. Immediate relay or re-read baton. |
-
-Zone = MAX(turn-based zone, file-size-based zone). Thresholds are conservative
-approximations, calibrated over time via crystallization protocol.
-
-### Usage
+If the environment surfaces context-zone transitions (in the author's setup
+these appear as `zone_transition` events in `~/.claude/traces/{session_id}.jsonl`),
+read them through `scripts/context-budget.sh` (the Protocol-OS bridge). The
+script reports the current zone — `GREEN` / `YELLOW` / `RED` — or `UNKNOWN`
+when no trace is present. This is an **optional environment integration**: when
+the bridge is there it is the truth; when it isn't, the script reports `UNKNOWN`
+and you fall back to the self-check below.
 
 ```bash
-# Initialize
-bash scripts/context-budget.sh init <agent-id> --profile solo|subagent|orchestrator
-
-# After each major operation
-bash scripts/context-budget.sh tick <agent-id> --files-read <bytes>
-
-# Check current zone
+# Report the current zone for an agent (reads the trace bridge)
+export SESSION_ID="{session-uuid}"
 bash scripts/context-budget.sh check <agent-id>
 
 # Visual status
 bash scripts/context-budget.sh render <agent-id>
 bash scripts/context-budget.sh render-all
-
-# Cleanup
-bash scripts/context-budget.sh reset <agent-id>
 ```
+
+### Fallback — qualitative self-check
+
+When no zone bridge is present (`UNKNOWN`), read your own depth-of-context
+symptoms instead of a counter. You are approaching the window's end when you
+notice:
+
+- You are re-reading files or re-deriving facts you already established
+- Earlier decisions in the session feel hazy and you reach for the blackboard
+  to recall them rather than remembering
+- Your working set (files read, findings held, sub-results) is large relative
+  to how the session began
+- You catch yourself summarizing your own prior reasoning to keep it in view
+
+Any of these is a YELLOW-equivalent signal: treat it as "finalize the baton
+soon." Several of them together, or a genuine struggle to hold the thread, is
+RED-equivalent: relay now.
 
 ### Zone behaviors
 
-**YELLOW:**
-- Announce: "Context budget at YELLOW. Baton is current."
-- Checkpoint after every decision (not just every 3 findings)
-- Consider whether current task can complete before RED
+Whether the zone comes from the bridge or the self-check, the behavior is the
+same. Zones are expressed as a *pressure level*, not a percentage or count —
+the point is what you do, not a threshold you cross.
 
-**RED:**
-- Announce: "Context budget at RED. Baton ready at [path]. Recommend relay."
-- No new large file reads (each read accelerates toward CRITICAL)
-- Finalize baton with all current state
+**YELLOW (pressure building):**
+- Announce: "Context zone YELLOW. Baton is current."
+- Checkpoint after every decision (not just every few findings)
+- Consider whether the current task can complete before RED
+
+**RED (near the window's end):**
+- Announce: "Context zone RED. Baton ready at [path]. Recommend relay."
+- No new large file reads (each read accelerates toward compaction)
+- Finalize the baton with all current state
 - Hive: Orchestrator decides relay strategy (hot-swap, phase-gated, or orchestrator relay)
-- Solo: Recommend fresh session with baton path
+- Solo: Recommend a fresh session with the baton path
 
-**CRITICAL:**
-- Compaction may fire at any moment
-- If still in session: immediately re-read baton from disk
-- Treat disk as sole source of truth
+**Compaction imminent / just fired:**
+- If still in session: immediately re-read the baton from disk
+- Treat disk as the sole source of truth
 
 ---
 
@@ -250,7 +263,8 @@ could resume from it.
 
 ### Layer 2 — Proactive Compact (YELLOW zone)
 
-When budget tracker signals YELLOW (~60-75% estimated):
+When the zone signal reads YELLOW (from the trace bridge, or from the
+qualitative self-check when no bridge is present):
 1. Announce to user
 2. Increase checkpoint frequency
 3. If continuing past YELLOW, run `/compact focus on [current task context]`
@@ -258,9 +272,9 @@ When budget tracker signals YELLOW (~60-75% estimated):
 
 ### Layer 3 — Baton Restart (RED zone)
 
-When budget tracker signals RED (~75-85% estimated):
+When the zone signal reads RED:
 1. Finalize the baton
-2. Recommend fresh session: "Context budget at RED. Baton ready at [path].
+2. Recommend fresh session: "Context zone RED. Baton ready at [path].
    Recommend: start fresh session with 'Resume from baton at [path]'."
 
 ### Layer 4 — Safety Net
@@ -274,18 +288,18 @@ If compaction fires despite protocol:
 
 ## Hive Mission Procedure — Orchestrator Decides
 
-The Orchestrator monitors the state machine and budget trackers, choosing the
-appropriate relay strategy:
+The Orchestrator monitors the state machine and the agents' zone signals,
+choosing the appropriate relay strategy:
 
 ### Individual hot-swap
 
-Agent writes checkpoint, shuts down, fresh replacement spawned from baton.
-Used when one agent approaches limits mid-phase.
+Agent writes checkpoint and completes; a fresh replacement is spawned from the
+baton. Used when one agent approaches limits mid-phase.
 
 ```
-1. Agent signals RED zone
+1. Agent's zone signal reads RED
 2. Orchestrator writes agent's baton to blackboard
-3. Agent shuts down (shutdown_request)
+3. Agent writes its final checkpoint and completes (see agent-shutdown.md)
 4. Orchestrator spawns fresh agent with baton-enriched prompt
 5. Fresh agent reads baton, continues from last checkpoint
 ```
@@ -297,9 +311,9 @@ Used when 2+ agents approaching limits near a phase boundary.
 
 ```
 1. Orchestrator detects multiple agents at YELLOW/RED
-2. Current phase completes (or time-boxed)
+2. Current phase completes (or is time-boxed)
 3. All agents write final checkpoints
-4. All agents shut down
+4. All agents complete (or are stopped early per agent-shutdown.md)
 5. Fresh squad spawned for next phase, reading from blackboard
 ```
 
@@ -307,7 +321,8 @@ Used when 2+ agents approaching limits near a phase boundary.
 
 If the Orchestrator itself approaches RED:
 1. Write comprehensive baton (Commander's Intent + all state + next steps)
-2. Shut down all agents
+2. Let the squad's agents complete (TaskStop any still running, preserving
+   their checkpoints per agent-shutdown.md)
 3. Request human intervention to start a fresh session
 4. **This is the one relay that cannot be automated**
 
@@ -315,23 +330,29 @@ If the Orchestrator itself approaches RED:
 
 ## Subagent Procedure
 
-Every spawn prompt includes a `## CRITICAL: Context Budget` section:
+Every spawn prompt includes a `## CRITICAL: Context Zone` section:
 
 ```markdown
-## CRITICAL: Context Budget
+## CRITICAL: Context Zone
 
-Initialize the budget tracker at session start:
-  bash scripts/context-budget.sh init {agent-id} --profile subagent
+If a zone bridge is available, read your zone through it:
+  export SESSION_ID="{session-uuid}"   # if your environment surfaces it
+  bash scripts/context-budget.sh check {agent-id}
 
-After each major operation (file read, web fetch, multi-step analysis):
-  bash scripts/context-budget.sh tick {agent-id} --files-read {bytes}
+If it reports UNKNOWN, use the qualitative self-check instead (re-reading files
+you already read, hazy recall of earlier decisions, a large working set).
 
 At YELLOW: checkpoint immediately, increase write frequency.
 At RED: write final findings to blackboard, signal relay readiness to team lead.
-At CRITICAL: stop new work, re-read your checkpoint from the blackboard.
-
-Use max_turns appropriate to your profile to prevent runaway consumption.
+When compaction is imminent: stop new work, re-read your checkpoint from the
+blackboard.
 ```
+
+The spawner right-sizes each agent by choosing its **model and reasoning
+effort** for the charge (a Haiku/Sonnet low-effort agent for a narrow lookup, a
+Fable/Opus high-effort agent for deep synthesis) rather than by capping turns.
+Match the tier to the work; that is the lever that keeps consumption
+proportionate.
 
 ---
 
@@ -385,33 +406,38 @@ The blackboard itself carries the full state -- agents read it, rather than rece
 | Anti-Pattern | Why It's Wrong | Correct Approach |
 |-------------|---------------|-----------------|
 | Writing baton only at RED | Too late — compaction may have already fired | Write on every meaningful event |
-| Ignoring budget tracker | "It's just a heuristic" — but it's the only early warning | Initialize at start, tick consistently |
+| Ignoring the zone signal | "It's just a heuristic" — but it's the only early warning | Read the bridge if present; otherwise run the self-check |
 | Reconstructing from memory after compaction | Memory is unreliable post-compaction | Re-read from disk — disk is truth |
 | Skipping baton for "simple" tasks | Simple tasks grow. The baton costs one Write call. | Always maintain baton |
-| Large file reads at RED | Each read accelerates toward CRITICAL | Defer reads or read minimal sections |
+| Large file reads at RED | Each read accelerates toward compaction | Defer reads or read minimal sections |
 | Fresh agent ignoring baton | "I'll figure it out" — wastes context rediscovering | Read baton first, then verify |
 
 ---
 
 ## Calibration
 
-Budget thresholds are conservative initial estimates. Calibrate via crystallization:
-- If agents relay too early (wasted capacity) → raise thresholds
-- If compaction hits despite RED zone → lower thresholds
-- Track zone_change events across 3+ missions to identify systematic bias
-- File size thresholds depend on average file sizes in the project — calibrate per codebase
+The zone behaviors are qualitative by design, so calibration is about the
+*relay decision*, not about tuning a number:
+- If agents relay too early (wasted capacity) → treat YELLOW-equivalent
+  symptoms as "checkpoint more often," not "relay now"
+- If compaction hits despite a RED read → relay sooner on the RED signal
+- When the trace bridge is present, track its `zone_transition` events across
+  3+ missions to see whether the qualitative self-check is leading or lagging
+  the bridge, and adjust the self-check's sensitivity accordingly
 
 ---
 
 ## Edge Cases
 
 - **Orchestrator runs out of context:** Only relay requiring human intervention.
-  Writes baton, shuts down squad, requests fresh session.
+  Writes baton, lets the squad complete (or stops it per `agent-shutdown.md`),
+  requests fresh session.
 - **Fresh agent can't read baton:** Falls back to Commander's Intent + Findings +
   Decisions. Logs as L2 failure.
 - **State machine out of sync:** Scrum Master detects mismatch. Regenerate from
   blackboard. L1 failure logged.
-- **Budget thresholds wrong:** Calibrated over 3+ missions via crystallization.
+- **No zone bridge available:** Expected in many environments — the qualitative
+  self-check is the supported fallback, not a degraded mode.
 
 ---
 
@@ -420,7 +446,7 @@ Budget thresholds are conservative initial estimates. Calibrate via crystallizat
 | Protocol | Relationship |
 |----------|-------------|
 | `checkpoint.md` | Checkpoint is for same-agent recovery; baton is for cross-agent relay. YELLOW zone triggers increased checkpoint frequency. |
-| `crystallization.md` | Budget thresholds are calibrated via crystallization across missions |
-| `mission-cleanup.md` | State and budget files archived after mission completion |
-| `agent-shutdown.md` | Relay sequence includes shutdown; baton must be written before shutdown_request |
-| `context-preservation.md` | Return to Sangha extends the original context preservation rules |
+| `crystallization.md` | Relay decisions are reviewed via crystallization across missions |
+| `mission-cleanup.md` | State and zone files archived after mission completion |
+| `agent-shutdown.md` | Relay ends an agent's life; the baton (and any partial work) must be written before the agent completes or is stopped |
+| `bootstrap/rules/context-preservation.md` | Return to Sangha extends the original context preservation rules |

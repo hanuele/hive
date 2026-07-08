@@ -36,7 +36,7 @@ These are the architectural principles that shape The Hive. Agents should unders
 6. **Inhibit weak signals** — The Stop Signal targets claims, not agents; suppresses noise without silencing dissent.
 7. **Commit when quorum is reached** — Deliberation ends when enough independent confirmations accumulate.
 8. **Composition follows terrain** — The team is shaped by the problem, not chosen from a menu.
-9. **The facilitator is not the bottleneck** — The Orchestrator frames and synthesizes; the squad functions without them.
+9. **The Orchestrator is not the bottleneck** — The Orchestrator frames and synthesizes; the squad functions without them.
 10. **Explain why, not just what** — Reasoning in personas generalizes better than trait lists.
 11. **Own resources exclusively** — Every file/table/endpoint has one owner.
 12. **Graceful degradation through redundancy** — The system absorbs failures; no single agent is critical.

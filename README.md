@@ -83,11 +83,11 @@ The dharma offering wove contemplative awareness into a technical architecture. 
 
 ### Act 5: Proof of Life
 
-Five real missions. All succeeded. Zero coordination failures.
+Real missions ran in the origin project — and their learning is what shipped here. Five patterns crystallized from those missions and travel with the framework, each in [`memory/patterns/`](memory/patterns/) and each citing the missions that produced it: Commander's Intent Quality Gate, Plan-Driven Zero-Deviation, Review Phase Value, Findings-vs-Checkpoint Drift, and Test Gap as First-Class Finding. Those are the exported artifacts — the distilled rules, not the raw run logs.
 
-The Complementary Lens pattern — agents consistently surfacing findings their teammates missed — was promoted from observation to protocol. Blackboard stigmergy worked exactly as the termite biologists predicted: agents left traces, other agents read them, and the shared environment became the coordination mechanism.
+Blackboard stigmergy worked exactly as the termite biologists predicted: agents left traces, other agents read them, and the shared environment became the coordination mechanism. The Crystallization Spiral turned mission observations into patterns, and patterns into rules.
 
-The system learned. The Crystallization Spiral turned mission observations into patterns, patterns into rules. The error catalog grew. The retrospectives improved. The plan was no longer a plan — it was a living thing.
+To be honest about what you are holding: **this distribution ships with the trackers and event log reset.** The mission history, retrospectives, and raw event stream live in the origin project, not here. What travels is the learning — the five patterns above and the protocols they hardened. `memory/hive-status.md` and the pattern tracker start empty on purpose; they fill as *you* run missions.
 
 ---
 
@@ -101,17 +101,18 @@ cd hive
 ./scripts/bootstrap.sh --target /path/to/your/claude-code-project
 ```
 
-Then fill in the placeholders listed in `bootstrap/DOMAIN-INJECTION-CHECKLIST.md`.
+Then fill in the placeholders listed in `bootstrap/DOMAIN-INJECTION-CHECKLIST.md`. The bootstrap script also installs the agent definitions from `agents/` into your project's `.claude/agents/`, so the personas are available as spawnable agents — no manual step needed.
 
 ### Path 2: Manual Integration
 
 1. **Copy** the framework into your project: `cp -r personas/ squads/ constitutions/ protocols/ terrain/ differentiation/ memory/ /your/project/.claude/hive/`
 2. **Copy** the rules: `cp bootstrap/rules/*.md /your/project/.claude/rules/`
 3. **Copy** the skill: `cp -r bootstrap/skills/assess-terrain/ /your/project/.claude/skills/`
-4. **Append** the CLAUDE.md snippet: `cat bootstrap/CLAUDE-SNIPPET.md >> /your/project/CLAUDE.md`
-5. **Customize** — fill in `{PLACEHOLDER}` values per `DOMAIN-INJECTION.md`
-6. **Assess terrain** — before your first mission, run `/assess-terrain` on your ticket
-7. **Launch** — follow `ONBOARDING.md` for your first squad
+4. **Install** the agent definitions: `cp agents/*.md /your/project/.claude/agents/` (makes the personas spawnable as `.claude/agents`; the bootstrap script does this for you)
+5. **Append** the CLAUDE.md snippet: `cat bootstrap/CLAUDE-SNIPPET.md >> /your/project/CLAUDE.md`
+6. **Customize** — fill in `{PLACEHOLDER}` values per `DOMAIN-INJECTION.md`
+7. **Assess terrain** — before your first mission, run `/assess-terrain` on your ticket
+8. **Launch** — follow `ONBOARDING.md` for your first squad
 
 ### See It in Action
 
@@ -166,6 +167,9 @@ hive/
 │   ├── scrum-master.md          #   Process guardian, impediment remover
 │   └── _schema-reference.md     #   Power-user YAML schema (progressive disclosure)
 │
+├── agents/                      # Installable .claude/agents form of the personas
+│   └── *.md                     #   7 agent-definition files (bootstrap installs to .claude/agents/)
+│
 ├── squads/                      # Terrain-adaptive team templates
 │   ├── research-squad.md        #   High uncertainty → fan-out/fan-in research
 │   ├── engineering-squad.md     #   Known requirements → build/ship
@@ -194,6 +198,7 @@ hive/
 │   ├── mission-cleanup.md       #   Post-mission housekeeping
 │   ├── bluf-format.md           #   Bottom Line Up Front communication
 │   ├── synthesis-template.md    #   How to aggregate findings
+│   ├── workflow-missions.md     #   Workflow-native missions
 │   ├── failure-taxonomy.md      #   Classifying what went wrong
 │   ├── insufficient-basis.md    #   When "we don't know" is the answer
 │   ├── definition-of-done.md    #   Mission completion checklists (solo + squad)
