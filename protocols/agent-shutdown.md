@@ -1,191 +1,145 @@
 # Agent Shutdown Protocol
 
-> Reliable agent shutdown for Hive squad missions.
-> Addresses ERR-008: agents going idle instead of responding to shutdown_request.
+> How a Hive agent's life ends cleanly — the common case (it finishes and
+> says goodbye) and the rare case (it must be stopped early).
 
 ## Why This Exists
 
-During hello-world smoke tests, agents went idle instead of approving `shutdown_request` — requiring 2-3 manual retries. Root cause analysis (agent-shutdown-research mission, 2026-03-03) identified three causes that must be treated INDEPENDENTLY:
+A squad agent is spawned for a charge. When the charge is done, the agent's
+life is done. The intention that governs this whole protocol is simple and
+non-negotiable:
 
-| Failure Mode | Root Cause | Mitigation |
-|---|---|---|
-| A: Agent receives message, responds with text instead of tool call | Spawn prompt gap — persona verbal bias + missing explicit instruction | Add CRITICAL: Shutdown Handling section to spawn prompt |
-| B: Agent receives message but is past turn boundary (idle) | Idle-state lifecycle — agent finished turn before message arrived | Send shutdown BEFORE agent goes idle; add shutdown reminder message |
-| C: Message never delivered (in-process) | Timing/queue issue — message sent while agent mid-turn | Retry strategy with backoff |
+> **No agent is silently killed mid-thought.**
 
-> **Note (Challenger STOP-4):** The specific failure mode in hello-world smoke tests was not instrumented. All three mitigations are included because the failure mode is uncharacterized. Once a controlled test is run (see Part 6), unnecessary mitigations can be removed.
-
----
-
-## Part 1 — Spawn Prompt Template
-
-**Every agent spawn prompt MUST include this section verbatim (adapt only the text after the colon on the first line):**
-
-```
-## CRITICAL: Shutdown Handling
-
-When you receive a message with type "shutdown_request", you MUST respond
-using the SendMessage tool with type "shutdown_response" and approve: true.
-Extract the requestId from the message and pass it as request_id.
-Do NOT just acknowledge it in text — you must actually call the tool.
-
-Example:
-  SendMessage(type="shutdown_response", request_id="<requestId from message>", approve=True)
-
-This is a hard requirement. Failure to respond terminates your session without
-clean exit and may leave orphaned team resources.
-```
-
-**Placement:** After persona identity section, before task description. This ensures it is read before the agent begins task-focused work.
+Everything below serves that intention. In the modern harness the mechanics
+are far lighter than they once were — a background agent finishes on its own
+and the harness notifies the spawner. There is no handshake to perform, no
+team resource to tear down. What remains is care: making sure that when an
+agent ends, its contribution is named (see `agent-farewell.md`) and any
+unfinished work is preserved to the blackboard before the agent is gone.
 
 ---
 
-## Part 2 — Farewell & Shutdown Primer
+## Part 1 — The Normal Case (Charge Complete)
 
-> **Before** sending the shutdown primer below, the Scrum Master (or
-> Orchestrator) sends a farewell message per `protocols/agent-farewell.md`.
-> The farewell acknowledges the agent's specific contribution. Wait 5-10
-> seconds after the farewell before sending the primer.
+This is the overwhelmingly common path, and it requires nothing special.
 
-Before sending `shutdown_request`, send a **shutdown primer** to the agent. This serves two purposes:
-1. Re-activates a potentially idle agent (triggers a new turn)
-2. Refreshes the shutdown instruction in the agent's active context window (mitigates STOP-5: spawn prompt recency fading)
-
-**Primer message template:**
+A background agent (spawned via the Agent tool, running in the background by
+default) works its charge to completion, writes its final entry to the
+blackboard, and sends its completion message. That completion message carries
+the farewell intention described in `agent-farewell.md` — the agent's own
+last words about what it did. The harness then notifies the spawner
+automatically that the agent has finished.
 
 ```
-SendMessage(
-    type="message",
-    recipient="agent-name",
-    content="Your tasks are complete. Thank you for your work. When you receive
-             the shutdown_request that follows, please respond using the
-             SendMessage tool with type='shutdown_response' and approve=True,
-             passing the request_id from the message. Do NOT just acknowledge
-             this in text — call the tool.",
-    summary="Preparing for shutdown"
-)
+Agent works charge
+  │
+Agent writes final blackboard entry (findings / checkpoint)
+  │
+Agent sends completion message (carries its own farewell)
+  │
+Harness notifies the spawner automatically
+  │
+Done — nothing further to do
 ```
 
-Wait 5-10 seconds after the primer before sending `shutdown_request`.
+There is no `shutdown_request`, no approval to wait for, no config file to
+inspect. The agent has said what it did and rested. The orchestrator reads
+the completion notification and moves on.
+
+> If the spawner wants to continue the conversation instead of letting the
+> agent rest — ask a follow-up, request a revision — it uses
+> `SendMessage({to: "<agent-name>", ...})`. A named agent can be messaged
+> even after it has completed; the harness resumes it from its transcript.
+> This is the difference between "we're done" and "one more thing": say
+> nothing and the agent stays at rest; message it and it wakes with its
+> context intact.
 
 ---
 
-## Part 3 — Shutdown Timing
+## Part 2 — Early Termination (TaskStop)
 
-Send `shutdown_request` **while the agent is still in an active turn**, not after it has gone idle.
+Sometimes a running background agent must be stopped before it finishes: the
+mission is abandoned, the charge was wrong, a duplicate was spawned, or the
+work is going sideways. The tool for this is `TaskStop <agent-id>`, which
+terminates a running background agent.
 
-### Option A — Trigger on task completion (recommended)
+**Before calling `TaskStop`, the orchestrator honors the core intention** —
+no agent is silently killed mid-thought:
 
-Watch for the agent to mark its final task complete (status: "completed"). Send `shutdown_request` immediately:
+1. **Check the blackboard for an unfinished checkpoint.** Look at the agent's
+   section. Is there work in progress that has not been written down?
+2. **Preserve any partial work into the blackboard.** If the agent produced
+   findings or a partial change that only live in its conversation, the
+   orchestrator writes what is recoverable into the blackboard first — from
+   the agent's last checkpoint, its messages, or by asking the agent (via
+   `SendMessage`) to flush its state before it is stopped.
+3. **Write a shutdown note to the blackboard** so the record explains itself.
+   The note says *why* the agent was stopped early, so a future reader (or a
+   resuming instance) understands this was a deliberate act, not a crash.
 
-```python
-# After agent marks final task complete
-SendMessage(
-    type="shutdown_request",
-    recipient="agent-name",
-    content="All tasks complete. Please shut down gracefully."
-)
+```markdown
+### Shutdown Note — {agent-name}
+- **Stopped by:** orchestrator
+- **When:** {ISO-8601}
+- **Reason:** {mission abandoned | duplicate | scope corrected | going sideways | ...}
+- **Partial work preserved:** {pointer to the blackboard section, or "none — agent had not started"}
 ```
 
-### Option B — TeammateIdle hook
+Only after those three steps does the orchestrator call `TaskStop`. The
+sequence matters: preserve first, record why, then stop.
 
-Configure a `TeammateIdle` hook to fire when the agent goes idle. Use exit code 0 to allow idle (natural completion), or send a `shutdown_request` message in the same turn:
-
-```json
-{
-  "hooks": {
-    "TeammateIdle": [
-      {
-        "matcher": ".*",
-        "hooks": [{"type": "command", "command": "..."}]
-      }
-    ]
-  }
-}
 ```
-
-Note: TeammateIdle fires before the agent's turn ends — this is the last safe interception point.
-
-### Option C — Proactive self-shutdown (spawn prompt)
-
-Include in the spawn prompt: "After completing all your tasks and writing your final checkpoint, send the team-lead a message that you are done. Then wait for a shutdown_request." This keeps the agent in a turn-receptive state.
+Orchestrator decides an agent must stop early
+  │
+Read agent's blackboard section — any unfinished checkpoint?
+  │
+Preserve recoverable partial work into the blackboard
+  │
+Write Shutdown Note (reason on the record)
+  │
+TaskStop <agent-id>
+```
 
 ---
 
-## Part 4 — Retry Strategy
+## Part 3 — Continued Conversation (Not a Shutdown)
 
-If no `shutdown_response` is received within 60 seconds of sending `shutdown_request`:
-
-| Attempt | Wait | Action |
-|---------|------|--------|
-| 1 | 0s | Send shutdown_request |
-| 2 | 60s | Resend shutdown_request with reminder |
-| 3 | 60s | Resend with explicit instruction |
-| After 3 | — | Proceed to cleanup; agent will time out naturally |
-
-**Retry message template:**
-
-```
-Attempt 2: "You have work outstanding. Please respond to the shutdown request
-by calling SendMessage with type='shutdown_response' and approve=True,
-passing the request_id from the shutdown_request message."
-
-Attempt 3: "Final reminder: call SendMessage(type='shutdown_response',
-request_id='<id>', approve=True) to shut down cleanly. This is the last
-request before timeout."
-```
-
-After 3 failed retries, the agent session will eventually terminate via the
-5-minute heartbeat timeout. Proceed to `TeamDelete` — the agent is effectively
-dead even if not cleanly shut down.
+Worth stating plainly because it is easy to conflate with shutdown: continuing
+to work *with* an agent is not a lifecycle event at all. `SendMessage` to a
+named agent messages it and, if it has already completed, resumes it from its
+transcript. Use this whenever the relationship isn't over — a clarifying
+question, a second pass, a follow-up charge. No shutdown mechanics are
+involved.
 
 ---
 
-## Part 5 — Verification
-
-After sending `shutdown_request` and receiving `shutdown_response`:
-
-1. Check `~/.claude/teams/{team-name}/config.json` — the agent's entry should be removed.
-2. Only call `TeamDelete` after ALL agents have responded or timed out.
-
----
-
-## Part 6 — Instrumented Test (Recommended Before Finalizing Protocol)
-
-> Challenger STOP-4: The failure mode in hello-world smoke tests was uncharacterized. Run this test to identify which mitigation actually matters.
-
-**Test procedure:**
-1. Spawn one agent with the current spawn prompt template (WITH "## CRITICAL: Shutdown Handling" section)
-2. Give it a trivial task (write one line to a file)
-3. Wait for it to complete the task and go idle
-4. Send a `shutdown_request`
-5. Observe: does the agent respond with (a) text acknowledgment, (b) shutdown_response tool call, or (c) silence?
-
-**If (a) text acknowledgment:** Spawn prompt section works but verbal bias (persona) is overriding. Add stronger framing ("This is a hard requirement — calling the tool is the ONLY valid response").
-
-**If (b) tool call:** Protocol works. Spawn prompt section is sufficient.
-
-**If (c) silence:** Delivery failure. Focus on timing (send while active, not idle) and primer message.
-
-**Test result (2026-03-03):** (b) clean shutdown_response tool call on first attempt. Agent with spawn prompt CRITICAL section + scope constraint completed trivial task, sent completion message, went idle, received shutdown_request ~5s later, responded with shutdown_response in ~10s. No rogue task-seeking. This confirms spawn prompt section + scope constraint + prompt timing are sufficient for the common case. Delivery failure (mode C) was not observed. Protocol confidence upgraded from 0.70 to 0.85.
-
----
-
-## Part 7 — Squad Template Checklist
+## Part 4 — Squad Spawn Checklist
 
 Before spawning any agent, verify the spawn prompt includes:
 
-- [ ] Persona identity section
-- [ ] `## CRITICAL: Shutdown Handling` section (verbatim from Part 1)
-- [ ] Task description
-- [ ] Blackboard path
-- [ ] Checkpoint protocol reference
+- [ ] Persona identity section (persona × lens — see `personas/`)
+- [ ] Task / charge description
+- [ ] Blackboard path and the section the agent writes to
+- [ ] Checkpoint protocol reference (so partial work is always recoverable)
+- [ ] Completion instruction: write final blackboard entry, then send a
+      completion message carrying the farewell (see `agent-farewell.md`)
+
+Note what is **no longer** here: there is no "CRITICAL: Shutdown Handling"
+section to paste, because agents do not approve their own shutdown anymore.
+The normal end of life is the completion message; the abnormal end is
+`TaskStop` by the orchestrator.
 
 ---
 
 ## Reference
 
-- **ERR-008**: `memory/active/error-catalog.md` — agent goes idle instead of shutdown_response
-- **Research source**: `memory/active/blackboard/agent-shutdown-research.md` (confidence: 0.85, upgraded from 0.70 after Part 6 instrumented test passed — clean shutdown on first attempt)
-- **Official docs**: https://code.claude.com/docs/en/agent-teams#limitations
-- **Known platform issues**: GitHub #29163, #25131, #28552 (anthropics/claude-code)
+- **`agent-farewell.md`** — the "Rest Well" intention that rides in the
+  completion message and the agent's last blackboard entry.
+- **`return-to-sangha.md`** — checkpoints and the Living Baton; what "partial
+  work preserved" draws on when an agent is stopped early.
+- **Agent tool** — `run_in_background` (default true), `name`, `model`,
+  `isolation`. Background agents notify the spawner on completion.
+- **`TaskStop <agent-id>`** — terminates a running background agent.
+- **`SendMessage({to: name})`** — messages or resumes a named agent, even
+  after completion.

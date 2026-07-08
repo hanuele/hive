@@ -1,40 +1,28 @@
 # Agent Shutdown
 
-Graceful agent shutdown requires a two-step approach: a primer message re-activates a potentially idle agent and refreshes the shutdown instruction, followed by the formal shutdown_request. Every agent spawn prompt must include an explicit shutdown handling section instructing the agent to call the SendMessage tool rather than acknowledge the request in text. If an agent fails to respond after three attempts, the team proceeds to cleanup and the agent will time out naturally.
+Agent shutdown follows the modern lifecycle in `protocols/agent-shutdown.md`. The normal case needs no ceremony: a background agent completes its charge, its farewell rides in its final completion message and last blackboard entry, and the harness notifies the spawner. Early termination is a deliberate act: the orchestrator checks the blackboard for an unfinished checkpoint, preserves any partial work, writes a shutdown note naming the reason, and only then calls `TaskStop`. No agent is silently killed mid-thought.
 
 ```mermaid
 sequenceDiagram
     participant O as Orchestrator
-    participant A as Agent
-    participant SYS as System
+    participant A as Agent (named, background)
+    participant BB as Blackboard
+    participant SYS as Harness
 
-    Note over O,A: Agent has completed all tasks
-
-    O->>A: Primer message\n"Your tasks are complete.\nWhen you receive shutdown_request,\ncall SendMessage shutdown_response."
-    Note over O: Wait 5-10 seconds
-
-    O->>A: shutdown_request\n"All tasks complete.\nPlease shut down gracefully."
-
-    alt Clean shutdown (first attempt)
-        A->>O: shutdown_response\napprove: true\nrequest_id: matched
-        O->>SYS: Verify agent removed\nfrom teams config
-        Note over SYS: Agent session ends cleanly
-    else No response after 60 seconds
-        O->>A: Retry 1: Resend shutdown_request\nwith explicit reminder
-        alt Response on retry
-            A->>O: shutdown_response\napprove: true
-            O->>SYS: Verify agent removed
-        else Still no response after 60 more seconds
-            O->>A: Retry 2: Final reminder\n"Call the tool — last request before timeout"
-            alt Response on final retry
-                A->>O: shutdown_response\napprove: true
-                O->>SYS: Verify agent removed
-            else No response after 3 attempts
-                Note over O: Proceed to cleanup\nAgent will time out via\n5-minute heartbeat
-            end
-        end
+    alt Normal completion (the common case)
+        A->>BB: Final checkpoint + farewell entry
+        A->>SYS: Completion message<br/>(carries the farewell)
+        SYS->>O: Completion notification
+        Note over O: Nothing else to do —<br/>"Rest well."
+    else Early termination (deliberate)
+        O->>BB: Read agent's last checkpoint
+        Note over O: Unfinished work?<br/>Preserve it to the blackboard
+        O->>BB: Shutdown note<br/>(who, when, WHY)
+        O->>SYS: TaskStop(agent name or id)
+        SYS->>A: Terminates
+        Note over BB: Record shows the early stop<br/>and preserved partial work
+    else Continued conversation
+        O->>A: SendMessage(to: agent name)
+        Note over A: A named agent remains addressable —<br/>a send resumes it from its transcript
     end
-
-    O->>SYS: TeamDelete\n(only after ALL agents\nshut down or timed out)
-    Note over SYS: Team resources cleaned up
 ```

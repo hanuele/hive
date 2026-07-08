@@ -68,7 +68,7 @@ Either of the following fires a scale request:
 
 | Trigger | Condition |
 |---------|-----------|
-| Budget zone | Any active agent's zone reaches YELLOW or worse |
+| Context zone | Any active agent's zone signal reaches YELLOW or worse |
 | Queue imbalance | One agent has >5 unclaimed tasks assigned to them |
 
 Both triggers may fire simultaneously; treat as a single scale request.
@@ -77,15 +77,16 @@ Both triggers may fire simultaneously; treat as a single scale request.
 
 **Scrum Master** owns operational monitoring. During a mission, SM checks:
 ```bash
-# Check all agents' budget zones
+# Check all agents' zone signals (reads the trace bridge if present;
+# reports UNKNOWN otherwise — then use the qualitative self-check)
 bash scripts/context-budget.sh render-all
-
-# Check TaskList for imbalance
-TaskList()  # then count per-owner pending tasks
 ```
 
-Frequency: after every major event (phase transition, agent completion message,
-or every ~15 minutes of wall time).
+For task imbalance the SM counts per-owner pending tasks on the TaskList (where
+that surface is available — task tooling is session-dependent; see
+`return-to-sangha.md`).
+
+Frequency: after every major event (phase transition, agent completion message).
 
 ### Scale Request Filing (Scrum Master)
 
@@ -104,7 +105,7 @@ SM does NOT spawn agents. SM does NOT decide whether to scale. SM reports.
 ### scale-{seq} — {PROPOSED|APPROVED|SPAWNED|REJECTED|HUMAN_REQUIRED}
 - **Requested by:** scrum-master
 - **Timestamp:** {ISO-8601}
-- **Trigger:** budget:YELLOW | tasks:>5 | both
+- **Trigger:** zone:YELLOW | tasks:>5 | both
 - **Target role:** implementer | investigator | challenger
 - **Current count:** {N}
 - **Proposed count:** {N+1}
@@ -168,11 +169,29 @@ for clarity if coordination requires it (Orchestrator decides).
 
 ## Clone Spawn Prompt Template
 
-A clone spawn prompt MUST include all five of these elements:
+The Orchestrator spawns a clone with the Agent tool, naming it (so it can be
+messaged or stopped later), running it in the background (the default), and
+choosing a model and reasoning effort that match the clone's role — a
+correctness/synthesis clone earns a higher tier than a mechanical fan-out
+clone:
+
+```
+Agent(
+    subagent_type="{persona-agent-type, e.g. challenger}",
+    name="{role}-{alpha|beta|gamma}",
+    model="sonnet",          # or fable/opus for deep work
+    # reasoning effort: low|medium|high|xhigh|max — set per role
+    run_in_background=true,   # default; the harness notifies on completion
+    prompt="""<the four elements below>"""
+)
+```
+
+The prompt MUST include all four of these elements:
 
 ```
 ## Element 1 — Persona
 You are The {Persona} with {lens} lens (personas/{persona-file}.md).
+(Role = persona × lens, as defined in squads/ — not a separate persona.)
 
 ## Element 2 — Mission Context
 Your mission: {paste Commander's Intent — full text, not a summary}
@@ -180,42 +199,26 @@ Your mission: {paste Commander's Intent — full text, not a summary}
 ## Element 3 — Task Scope Constraint
 You are a scaling clone. Your scope: claim ONLY unclaimed tasks with IDs
 greater than {last-claimed-task-id-of-original-agent}. Do NOT claim tasks
-already owned by {original-agent-name}. Check TaskList before claiming.
+already owned by {original-agent-name}. Check the task list before claiming.
 
-## Element 4 — Auto-Retirement
-When you have no remaining unclaimed tasks in your scope, write to
-## Scale Requests under your entry: "Clone work complete — {clone-name}"
-Then send a message to the Orchestrator:
-  "All my tasks are done, ready for shutdown."
-Wait for a shutdown_request before terminating.
+## Element 4 — Completion + Context Zone
+When you have no remaining unclaimed tasks in your scope:
+  1. Write to ## Scale Requests under your entry: "Clone work complete — {clone-name}"
+  2. Write your final checkpoint to the blackboard.
+  3. Send your completion message to the Orchestrator (it carries your
+     farewell — see protocols/agent-farewell.md). Then rest — the harness
+     notifies the Orchestrator automatically. There is nothing to wait for.
 
-## Element 5 — Shutdown Protocol + Budget Init
-## CRITICAL: Shutdown Handling
-
-When you receive a message with type "shutdown_request", you MUST respond
-using the SendMessage tool with type "shutdown_response" and approve: true.
-Extract the requestId from the message and pass it as request_id.
-Do NOT just acknowledge it in text — you must actually call the tool.
-
-Example:
-  SendMessage(type="shutdown_response", request_id="<requestId>", approve=True)
-
-This is a hard requirement. Failure to respond terminates your session
-without clean exit and may leave orphaned team resources.
-
-## CRITICAL: Context Budget
-
-Initialize the budget tracker (reads Protocol OS context zone from session trace):
-  export SESSION_ID="{session-uuid}"
-  bash scripts/context-budget.sh init {clone-name} --profile subagent
-  # Zone source: ~/.claude/traces/{SESSION_ID}.jsonl zone_transition events
-
-After each major operation:
-  bash scripts/context-budget.sh tick {clone-name} --files-read {bytes}
+## CRITICAL: Context Zone
+If a zone bridge is available, read your zone through it:
+  export SESSION_ID="{session-uuid}"   # if your environment surfaces it
+  bash scripts/context-budget.sh check {clone-name}
+If it reports UNKNOWN, use the qualitative self-check (re-reading files you
+already read, hazy recall of earlier decisions, a large working set).
 
 At YELLOW: checkpoint immediately, increase write frequency.
 At RED: write final findings to blackboard, signal relay readiness.
-At CRITICAL: stop new work, re-read your checkpoint from the blackboard.
+When compaction is imminent: stop new work, re-read your checkpoint.
 ```
 
 ---
@@ -277,7 +280,7 @@ that constraint overrides this guideline.
 ## Sequence Diagram: Mid-Mission Scale Request
 
 ```
-SM detects YELLOW budget on {agent} OR >5 unclaimed tasks on one agent
+SM detects YELLOW zone on {agent} OR >5 unclaimed tasks on one agent
   │
   ▼
 SM writes ## Scale Requests entry  (status: PROPOSED)
@@ -287,9 +290,9 @@ SM sends message → Orchestrator: "Scale request filed — see ## Scale Request
 Orchestrator reads entry
   ├─ count < 4  ──────────────────────────────────────────────────────────────┐
   │   APPROVE: update status PROPOSED → APPROVED                              │
-  │   Spawn clone per Clone Spawn Template (all 5 elements)                   │
-  │   Clone: initializes budget, claims unclaimed tasks > {task_id_X}         │
-  │   Clone: on completion → posts "Clone work complete", awaits shutdown      │
+  │   Spawn clone per Clone Spawn Template (Agent tool, all 4 elements)       │
+  │   Clone: claims unclaimed tasks > {task_id_X}                            │
+  │   Clone: on completion → posts "Clone work complete", sends completion    │
   │   Orchestrator: updates status APPROVED → SPAWNED                         │
   │   Orchestrator: fills "Orchestrator response" field                        │
   │                                                                            │

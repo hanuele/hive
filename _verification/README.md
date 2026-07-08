@@ -16,11 +16,19 @@ Each file in this directory describes a scenario that exercises a specific Hive 
 **Minimal example:**
 
 ```
-TeamCreate(team_name="verify-stop-signal", description="Verification: Stop Signal protocol")
+# Write the scenario's content into the blackboard Commander's Intent, then
+# spawn the agents the scenario calls for with the Agent tool. Name each one so
+# it can be messaged or stopped; background is the default.
 
-# Include the scenario file content in the blackboard Commander's Intent
-# Spawn agents per the scenario's composition
-# Observe and record results
+Agent(subagent_type="challenger", name="verify-challenger",
+      model="sonnet",
+      prompt="""You are The Challenger (personas/challenger.md).
+Scenario: Stop Signal protocol verification — <paste the scenario file content>.
+Blackboard: .claude/hive/memory/active/blackboard/verify-stop-signal.md
+Work the scenario and write your observations to the blackboard.""")
+
+# Spawn the remaining agents per the scenario's composition the same way,
+# then observe and record results against the scenario's pass criteria.
 ```
 
 ## What "Passing" Looks Like
