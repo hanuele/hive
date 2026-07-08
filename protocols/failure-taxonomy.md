@@ -144,7 +144,7 @@ This taxonomy maps to the 4-tier escalation in `escalation-rules.md`:
 | Failure Level | Escalation Tier |
 |---------------|----------------|
 | L1 | Tier 1 (Agent self-recovery) |
-| L2 | Tier 2 (Facilitator/Orchestrator decides) |
+| L2 | Tier 2 (Orchestrator decides) |
 | L3 | Tier 3a (Claude) or Tier 3b (Human Partner) depending on reversibility |
 | L4 | Beyond Tier 3b (Emergency abort + mandatory human review) |
 | L5 | Tier 3b (Human classification required) |

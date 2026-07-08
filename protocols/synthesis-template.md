@@ -1,4 +1,4 @@
-# Synthesis Protocol (For Facilitators)
+# Synthesis Protocol (For Orchestrators)
 
 ## Steps
 
@@ -25,7 +25,13 @@
    what uncertainty, what felt sense cannot be compressed into structured
    communication? Name it, even if it cannot be quantified. This preserves
    the signal that structured communication necessarily loses.
-8. RECOMMENDATION: Weighted synthesis with confidence levels
+8. RECOMMENDATION: Weighted synthesis with confidence levels.
+   INSUFFICIENT BASIS TRIGGER: If the CONTESTED findings from step 3 include a
+   key question on which the team could not reach quorum, do NOT force a
+   consensus recommendation. Emit an INSUFFICIENT BASIS block (see
+   `protocols/insufficient-basis.md`) for that question — "we do not know" is
+   a completion-valid answer, and a low-confidence recommendation dressed as
+   analysis is more dangerous than an honest admission.
 9. CRYSTALLIZATION: Patterns observed for post-mission retrospective
 ```
 
@@ -33,7 +39,7 @@ Write for the human being who needs to understand. Not for efficiency, not for p
 
 ## Important Notes
 
-- Synthesis is only valid if the Facilitator has access to **versioned agent positions**, not just final states.
+- Synthesis is only valid if the Orchestrator has access to **versioned agent positions**, not just final states.
 - If an agent revised its position during the mission, the synthesis must distinguish between:
   - **(a) genuine convergence** — independent agents reaching the same conclusion
   - **(b) apparent convergence** — agents updating toward a dominant position under blackboard influence

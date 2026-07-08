@@ -19,8 +19,8 @@ Hive missions use a 4-tier partnership escalation chain. See `protocols/escalati
 | Tier | Who | Resolves |
 |------|-----|----------|
 | 1 | Agent to Agent | Minor disagreements (structured debate, 2 rounds) |
-| 2 | Agent to Facilitator | Significant disagreements (evidence-based decision) |
-| 3a | Facilitator to Claude | Reversible decisions, design disputes, scope questions |
+| 2 | Agent to Orchestrator | Significant disagreements (evidence-based decision) |
+| 3a | Orchestrator to Claude | Reversible decisions, design disputes, scope questions |
 | 3b | Claude to Human Partner | Irreversible actions, security, financial data, blocking disagreements |
 
 **Key principle:** Claude (Tier 3a) resolves most escalations autonomously for reversible, in-scope decisions. Human partners are reserved for irreversible or high-stakes decisions (Tier 3b).

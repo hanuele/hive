@@ -8,13 +8,16 @@ When agents need *technical specialization* rather than general perspective. Dom
 
 ## Lenses
 
-| Lens | When to Use | Spawn Prompt Injection | What It Catches |
-|------|------------|----------------------|----------------|
-| **Security** | Credential handling, auth flows, input validation, OWASP concerns | "Apply a security lens: evaluate for injection, exposure, auth bypass, and CWE-classified vulnerabilities." | Credential leaks, injection vectors, auth gaps, data exposure — things a generalist treats as implementation detail |
-| **Performance** | Database queries, API response times, resource usage, scaling | "Apply a performance lens: evaluate for N+1 queries, missing indexes, unnecessary allocations, and scalability bottlenecks." | Slow queries, memory leaks, scaling walls — things that work in dev but fail at load |
-| **Correctness** | Test coverage, edge cases, type safety, contract adherence | "Apply a correctness lens: verify that the implementation matches the specification exactly. Check edge cases, type boundaries, and contract violations." | Off-by-one errors, type coercions, unhandled states — things that pass happy-path testing |
-| **Maintainability** | Refactoring, tech debt, API design, documentation | "Apply a maintainability lens: evaluate for readability, coupling, naming clarity, and whether a new team member could understand this in 6 months." | Hidden coupling, unclear naming, missing documentation — things that work now but create debt |
-| **User-impact** | Error messages, API responses, UI changes, data exports | "Apply a user-impact lens: for every change, ask 'what does the end user see?' Check error messages, response formats, and behavioral changes." | Breaking changes, confusing errors, silent behavior changes — things that pass tests but surprise users |
+Each lens has three parts: a one-line **definition** (what it asks of the change), a **search bias** (how it directs attention — inject this into the spawn prompt), and the **characteristic failure** it catches that a generalist misses.
+
+| Lens | Definition | Search bias (spawn injection) | Characteristic failure caught |
+|------|-----------|-------------------------------|-------------------------------|
+| **Security** | Does the change protect credentials, inputs, and trust boundaries against misuse? | Trace every input to its sink and every secret to its store; evaluate for injection, exposure, auth bypass, and CWE-classified vulnerabilities. | Credential leaks, injection vectors, auth gaps, data exposure — things a generalist treats as implementation detail. |
+| **Performance** | Will the change hold up under real load and data volume? | Focus on the hot path and the largest N; evaluate for N+1 queries, missing indexes, unnecessary allocations, and scalability bottlenecks. | Slow queries, memory leaks, scaling walls — things that work in dev but fail at load. |
+| **Correctness** | Does the implementation match the specification exactly, edge cases included? | Compare code against spec line by line; check edge cases, type boundaries, and contract violations. | Off-by-one errors, type coercions, unhandled states — things that pass happy-path testing. |
+| **Maintainability** | Could a new team member understand and safely change this in six months? | Read for readability and coupling; ask whether naming, structure, and documentation would orient a newcomer. | Hidden coupling, unclear naming, missing documentation — things that work now but create debt. |
+| **User-impact** | What does the end user actually see and experience from this change? | For every change, ask "what does the end user see?"; check error messages, response formats, and behavioral changes. | Breaking changes, confusing errors, silent behavior changes — things that pass tests but surprise users. |
+| **Standards** | Does the change follow the project's coding standards, style conventions, API contracts, and documentation completeness? | Check against the project's guidelines and existing conventions; verify naming, formatting, public-API shape, and doc coverage for new or changed surfaces. | Convention drift, undocumented public APIs, inconsistent naming, style violations — things that pass tests and behavior-focused reviews. |
 
 ## Engineering Squad Lens Injection (Worked Example)
 

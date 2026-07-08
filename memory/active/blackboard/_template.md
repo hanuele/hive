@@ -43,7 +43,7 @@ contraction even when conversation history does not. Write here early and often.
      SM writes WARN and leaves this section empty. -->
 
 ## Acceptance Criteria Verification
-<!-- Written by Verifier (Engineering) or Facilitator (other squads) during verification phase.
+<!-- Written by Verifier (Engineering) or Orchestrator (other squads) during verification phase.
      Format:
      Source: {ticket-key or "Commander's Intent"}
      - [x] AC text (PASS)

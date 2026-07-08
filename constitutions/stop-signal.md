@@ -29,8 +29,8 @@ A Stop Signal begins with what it acknowledges. Even the most critical challenge
 
 6. If re-evaluation yields no resolution (evidence remains contested):
    - **CRITICAL:** Escalate per `protocols/escalation-rules.md` — Tier 3a (Claude) if reversible, Tier 3b (human) if irreversible or uncertain. No further agent deliberation.
-   - **WARNING:** Facilitator decides. Log reasoning. Move forward.
-   - **INFO:** Facilitator closes as "unresolved." Document for retrospective.
+   - **WARNING:** Orchestrator decides. Log reasoning. Move forward.
+   - **INFO:** Orchestrator closes as "unresolved." Document for retrospective.
 
 7. A claim that receives 3+ Stop Signals without successful refutation is formally **CLOSED**. It may only be re-opened if new evidence is introduced that was not available during the original challenge cycle.
 

@@ -15,7 +15,7 @@ Fan-out (parallel, independent research)
     |
     v
 --- BREATHING SPACE ---
-Facilitator reads the full blackboard without acting.
+Orchestrator reads the full blackboard without acting.
 Not to decide, not to synthesize, but simply to see the whole.
 One reading pass with no output required.
     |
