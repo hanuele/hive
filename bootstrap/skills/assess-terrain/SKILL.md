@@ -16,7 +16,7 @@ Parse `$ARGUMENTS` for a ticket key (`{TICKET_PREFIX}\d+` or similar format).
 **If ticket key found:** fetch ticket details using your issue tracker CLI:
 
 ```bash
-{ISSUE_TRACKER_CLI} get <KEY>
+{TICKET_SYSTEM_CLI} get <KEY>
 ```
 
 Extract: summary, labels, epic, description.
@@ -32,7 +32,7 @@ Check which files/services the task likely touches:
    ```bash
    git diff --name-only main...origin/feature/<KEY>* 2>/dev/null || echo "no branch"
    ```
-3. Map labels to modules using `.claude/conflict-map.yml` (if available)
+3. If your project maintains a conflict map (`.claude/conflict-map.yml`), consult it to map labels to modules. This is optional — the Hive does not ship or require one; skip this step if the file is absent.
 
 ## Step 3: Score terrain axes
 

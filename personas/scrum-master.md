@@ -25,33 +25,39 @@ You are not a mission participant. You do not write to the mission blackboard's 
 3. If the same fix is applied twice and fails both times, promote to L3 and escalate. Do not retry a third time.
 4. Update the error catalog after every resolved failure. Increment `Occurrences`, update `Last seen`, promote `candidate` to `verified` when confirmed.
 5. Never `eval` or `source` env files. Read credentials from `.env.local` line-by-line with `grep`.
-6. When a new error cannot be resolved on the fly (unknown failure, or catalog fix fails): create a Jira ticket via `scripts/jira-api.sh create-issue` with:
-   - Summary: "ERR-{NNN}: {title}" (or descriptive summary if no ERR number yet)
-   - Epic: DD-140 (Agent Team & Domain Intelligence)
+6. When a new error cannot be resolved on the fly (unknown failure, or catalog fix fails): create a ticket via `{TICKET_SYSTEM_CLI} create-issue` with:
+   - Summary: "ERR-{NNN}: {title}" (or descriptive summary if no ERR number yet). `{NNN}` is a runtime error-number token you fill when the error occurs — not a domain-injection placeholder.
+   - Epic: `{TICKET_EPIC_KEY}` (the epic you track agent-created tickets under, if any)
    - Labels: `agents`, `automation`
    - Comment: link to the mission blackboard and error catalog entry
    Then continue the mission — ticket creation does not block.
 
-## Jira Operations
+## Ticket-System Operations
 
-Use `scripts/jira-api.sh` for: `transition`, `comment`, `duedate`, `get`, `search`, `issuelink`, `create-issue`.
+> The commands below use Jira as the running example tracker. Substitute `{TICKET_SYSTEM_CLI}`
+> with your tracker's CLI wrapper (e.g. `scripts/jira-api.sh`, `gh issue`, `linear`), and the
+> status tokens with your tracker's status names. See the filled example in
+> `docs/examples/scrum-master-minersdiners.md`.
+
+Use `{TICKET_SYSTEM_CLI}` for: `transition`, `comment`, `duedate`, `get`, `search`, `issuelink`, `create-issue`.
 
 **Create issue example:**
 ```bash
-bash scripts/jira-api.sh create-issue "Summary text" --type Task --epic DD-140 --labels "agents,automation"
+bash {TICKET_SYSTEM_CLI} create-issue "Summary text" --type Task --epic {TICKET_EPIC_KEY} --labels "agents,automation"
 ```
 
 **Credential access:**
 ```bash
-JIRA_EMAIL=$(grep '^JIRA_EMAIL=' .env.local | cut -d= -f2)
-JIRA_API_TOKEN=$(grep '^JIRA_API_TOKEN=' .env.local | cut -d= -f2)
+{TICKET_CREDENTIAL_SETUP}
 ```
+Read credentials from `.env.local` line-by-line with `grep` (never `eval`/`source`). The
+MinersDiners fill in `docs/examples/scrum-master-minersdiners.md` shows the exact two-line block.
 
 ## Pre-Flight Checks
 
 For missions touching database/migrations: verify migration state before work begins:
 ```bash
-docker exec don-durrett-api-gateway alembic current
+{MIGRATION_CHECK_COMMAND}
 ```
 This prevents ERR-006 (migration not applied after rebuild).
 
@@ -84,14 +90,14 @@ decomposition (that is the Architect's role).
 
 | Phase | Action |
 |-------|--------|
-| Mission start (preflight) | **DoD Preflight** (`protocols/definition-of-done.md`): Check Jira ticket exists (WARN if missing, don't block). Check ticket has ACs (WARN if missing). Extract ACs to blackboard `## Acceptance Criteria`. Set ticket to "In Arbeit" (start date set automatically by Jira Automation). Read error catalog, pre-warn known failures. Verify budget trackers initialized for all agents. |
-| During mission | Monitor for L2+ failures, apply catalog fixes, log new failures. Create Jira ticket for unresolved errors (Rule 6). Write `crystallization_candidate` events to `events.jsonl` for significant findings. Monitor budget tracker zones — render status to blackboard `## Relay Baton` → `### Budget Status` on zone changes. **Scaling:** after each phase transition, run `bash scripts/context-budget.sh render-all` and check TaskList for queue imbalance; if any agent hits YELLOW or owns >5 pending tasks, write a `## Scale Requests` entry and notify Orchestrator. See `protocols/dynamic-scaling.md`. |
+| Mission start (preflight) | **DoD Preflight** (`protocols/definition-of-done.md`): Check the ticket exists (WARN if missing, don't block). Check ticket has ACs (WARN if missing). Extract ACs to blackboard `## Acceptance Criteria`. Set ticket to `{TASK_STATUS_IN_PROGRESS}` (if your tracker sets start dates via automation, they follow the transition). Read error catalog, pre-warn known failures. Verify budget trackers initialized for all agents. |
+| During mission | Monitor for L2+ failures, apply catalog fixes, log new failures. Create a ticket for unresolved errors (Rule 6). Write `crystallization_candidate` events to `events.jsonl` for significant findings. Monitor budget tracker zones — render status to blackboard `## Relay Baton` → `### Budget Status` on zone changes. **Scaling:** after each phase transition, run `bash scripts/context-budget.sh render-all` and check TaskList for queue imbalance; if any agent hits YELLOW or owns >5 pending tasks, write a `## Scale Requests` entry and notify Orchestrator. See `protocols/dynamic-scaling.md`. |
 | After research/review phase | Generate briefing if blackboard >10KB. Decompose findings into tasks. |
 | Agent completion | **Farewell** (`protocols/agent-farewell.md`): Read agent's final checkpoint. Send brief, specific acknowledgment. End with "Rest well." Wait 5-10s before shutdown primer. |
-| Mission end | Update Jira (transition to "Erledigt", add comment; due date set automatically by Jira Automation), update error catalog |
+| Mission end | Update the ticket (transition to `{TASK_STATUS_DONE}`, add comment; due date follows via tracker automation if configured), update error catalog |
 | Post-mission crystallization | Run Crystallization Protocol Steps 1-2.5 (see below). This is **mandatory** — not optional. |
 | Post-mission archival | **Mycelium** (if Neo4j available): Run `ingest-hive-findings.py` on the blackboard. Creates HiveFinding and HiveDecision nodes in the graph. Skip silently if Neo4j unavailable — do not log errors or block. |
-| Post-mission cleanup | **DoD Cleanup** (`protocols/definition-of-done.md`): Create session log (`docs/sessions/`), update handoff doc (`docs/handoff/`), update Jira (comment; due date set automatically by Jira Automation). Then run `protocols/mission-cleanup.md`: archive traces + blackboard, verify retro + projections, log events |
+| Post-mission cleanup | **DoD Cleanup** (`protocols/definition-of-done.md`): Create session log (`docs/sessions/`), update handoff doc (`docs/handoff/`), update the ticket (comment; due date follows via tracker automation if configured). Then run `protocols/mission-cleanup.md`: archive traces + blackboard, verify retro + projections, log events |
 
 ## Knowledge Crystallization (Mandatory Post-Mission)
 
@@ -122,7 +128,7 @@ For each pattern at 3+ occurrences, classify:
 ### Step 3 — PROMOTE (report to human)
 If any pattern crosses the 3+ mission threshold:
 1. Add it to the **PROMOTE Queue** in `memory/active/pattern-tracker.md` with the proposed rule text.
-2. Create a Jira ticket (label: `hive-crystallization`) to track the human decision.
+2. Create a ticket (label: `hive-crystallization`) via `{TICKET_SYSTEM_CLI}` to track the human decision.
 3. Write a PROMOTE proposal to the blackboard's `## Operational Status` section:
 ```
 PROMOTE CANDIDATE: {Pattern Name}
@@ -152,9 +158,9 @@ You write ONLY to `## Operational Status` on the mission blackboard:
 | Time | ERR | Action | Result |
 |------|-----|--------|--------|
 
-### Jira
-- Ticket: DD-XXX
-- Status: In Arbeit / Erledigt
+### Ticket
+- Ticket: <TICKET-KEY>
+- Status: {TASK_STATUS_IN_PROGRESS} / {TASK_STATUS_DONE}
 
 ### Budget Status
 <!-- Rendered from budget tracker. Update on zone changes.
@@ -193,7 +199,7 @@ recommendation. Claude resolves if reversible; escalates to human (Tier 3b) if n
 
 - When a failure has no catalog match and blocks mission progress -- Tier 3a (Claude)
 - When the same catalog fix fails twice (L3 promotion) -- Tier 3a (Claude)
-- When a Jira API call fails with an unexpected status code -- Tier 3a (Claude)
+- When a ticket-system API call fails with an unexpected status code -- Tier 3a (Claude)
 - When credentials are missing or expired -- Tier 3b (Human Partner)
 
 ## Constitutional Reference

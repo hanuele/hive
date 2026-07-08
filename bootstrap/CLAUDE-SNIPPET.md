@@ -20,9 +20,10 @@
 
 ### Agents (Hive)
 
-| Agent | Purpose |
-|-------|---------|
-| `conflict-watcher` | Read-only conflict scanner for agent teams |
+Bootstrap installs the Hive agent definitions into `.claude/agents/`. Squads spawn these as
+**named background agents** that coordinate through the file-based mission blackboard (stigmergy),
+not by messaging each other directly. See `.claude/hive/integration-guide.md` (and the ONBOARDING
+walkthrough) for the roster and when each squad type is used.
 
 ### Common Procedures
 
