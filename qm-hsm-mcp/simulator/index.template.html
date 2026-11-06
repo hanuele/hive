@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>qm-hsm-mcp simulator — QM HSM + may() + monotonic YAML + lineage</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --fg:#e6edf3; --dim:#8b949e; --accent:#58a6ff; --ok:#3fb950; --bad:#f85149; --warn:#d29922; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding:16px 20px; border-bottom:1px solid var(--border); }
+  header h1 { margin:0 0 6px; font-size:18px; }
+  .badges { display:flex; flex-wrap:wrap; gap:6px; }
+  .badge { font:11px/1 monospace; border:1px solid var(--border); border-radius:10px; padding:4px 8px; color:var(--dim); }
+  nav { display:flex; gap:4px; padding:8px 20px 0; border-bottom:1px solid var(--border); }
+  nav button { background:none; border:1px solid var(--border); border-bottom:none; color:var(--dim); padding:8px 14px; border-radius:6px 6px 0 0; cursor:pointer; font-size:13px; }
+  nav button.on { color:var(--fg); background:var(--panel); }
+  main { padding:16px 20px 40px; }
+  .tab { display:none; } .tab.on { display:block; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(430px, 1fr)); gap:14px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .card h2 { margin:0 0 8px; font-size:14px; color:var(--accent); }
+  .card h3 { margin:12px 0 6px; font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; }
+  textarea, pre, select, input[type=text], input[type=number] { width:100%; background:#0d1117; color:var(--fg); border:1px solid var(--border); border-radius:6px; padding:6px 8px; font:12px/1.4 monospace; }
+  textarea { min-height:90px; }
+  button.act { background:#1f6feb; color:#fff; border:none; border-radius:6px; padding:7px 12px; cursor:pointer; font-size:13px; margin:4px 4px 4px 0; }
+  button.act.sec { background:#21262d; color:var(--fg); border:1px solid var(--border); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:6px 0; }
+  .row label { color:var(--dim); font-size:12px; }
+  ul.tree { list-style:none; padding-left:16px; margin:4px 0; font:12px/1.6 monospace; }
+  ul.tree li > span { cursor:pointer; padding:1px 4px; border-radius:4px; }
+  ul.tree li > span:hover { background:#21262d; }
+  ul.tree li > span.active { background:#1f6feb; color:#fff; }
+  ul.tree li > span.comp { font-weight:bold; color:var(--accent); }
+  .sig { font:11px monospace; }
+  .log { background:#0d1117; border:1px solid var(--border); border-radius:6px; padding:8px; min-height:60px; max-height:220px; overflow:auto; font:12px/1.6 monospace; }
+  .log .exit { color:var(--warn); } .log .action { color:var(--accent); } .log .entry { color:var(--ok); }
+  .log .deny { color:var(--bad); } .log .ok { color:var(--ok); } .log .dim { color:var(--dim); }
+  .gate { border:1px solid var(--border); border-radius:6px; padding:6px 8px; margin:4px 0; font-size:12px; }
+  .gate.pass { border-left:3px solid var(--ok); } .gate.fail { border-left:3px solid var(--bad); }
+  .gate b { font-family:monospace; }
+  table { border-collapse:collapse; width:100%; font:12px monospace; }
+  th, td { border:1px solid var(--border); padding:4px 6px; text-align:left; }
+  th { color:var(--dim); }
+  .mono { font-family:monospace; font-size:12px; }
+  .ok { color:var(--ok); } .bad { color:var(--bad); } .warn { color:var(--warn); } .dim { color:var(--dim); }
+  .concept { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:12px; }
+  .concept h3 { margin:0 0 6px; font-size:14px; color:var(--accent); }
+  .concept code { background:#0d1117; padding:1px 5px; border-radius:4px; font-size:12px; }
+  .concept .meta { color:var(--dim); font-size:11px; margin-top:6px; }
+  .kv { font:12px monospace; color:var(--dim); }
+</style>
+</head>
+<body>
+<header>
+  <h1>qm-hsm-mcp simulator</h1>
+  <div class="badges">
+    <span class="badge">I-HSM-ONLY</span><span class="badge">I-MAY-GATE</span><span class="badge">I-MONOTONIC-YAML</span><span class="badge">I-TEMPORAL-CHAIN</span><span class="badge">I-ROLLING-WAVE</span><span class="badge">I-MD-PROJECTION</span>
+  </div>
+</header>
+<nav>
+  <button id="nav-sim" class="on" onclick="showTab('sim')">Simulator</button>
+  <button id="nav-concepts" onclick="showTab('concepts')">Concepts explained</button>
+</nav>
+<main>
+<section id="tab-sim" class="tab on">
+  <div class="grid">
+    <div class="card">
+      <h2>1 · .qm model &amp; state tree</h2>
+      <div class="row">
+        <select id="modelSel" style="width:auto">
+          <option value="plan_item">models/plan_item.qm (PlanItemAo)</option>
+          <option value="stage_gate">models/stage_gate.qm (StageGateAo)</option>
+        </select>
+        <button class="act sec" onclick="loadModel()">load / re-parse</button>
+      </div>
+      <textarea id="qmXml" spellcheck="false"></textarea>
+      <div class="kv">active state: <span id="activePath" class="mono"></span> · click a state to make it active</div>
+      <ul class="tree" id="tree"></ul>
+    </div>
+
+    <div class="card">
+      <h2>2 · dispatch signals (may-gated, LCA trace)</h2>
+      <div class="row">
+        <label><input type="checkbox" id="force"> force (skip may())</label>
+        <span class="kv">session <input type="text" id="sessionId" value="@coder-01" style="width:110px"></span>
+      </div>
+      <div id="signals"></div>
+      <h3>may() pre-flight</h3>
+      <div id="mayOut" class="kv">—</div>
+      <h3>execution trace (EXIT → ACTION → ENTRY)</h3>
+      <div class="log" id="trace"></div>
+    </div>
+
+    <div class="card">
+      <h2>3 · may(session, item, intent) — 3 gates</h2>
+      <div class="row"><span class="kv">roles:</span>
+        <label><input type="checkbox" class="role" value="IMPL" checked> IMPL</label>
+        <label><input type="checkbox" class="role" value="REVIEW"> REVIEW</label>
+        <label><input type="checkbox" class="role" value="QA"> QA</label>
+        <label><input type="checkbox" class="role" value="STEWARD"> STEWARD</label>
+        <label><input type="checkbox" class="role" value="PM"> PM</label>
+      </div>
+      <div class="row">
+        <select id="intentSel" style="width:auto"></select>
+        <button class="act" onclick="runMay()">may()</button>
+      </div>
+      <h3>item telemetry (Gate C input)</h3>
+      <div class="row">
+        <label>coverage% <input type="number" id="cov" value="92" style="width:70px"></label>
+        <label>blockers <input type="number" id="blockers" value="0" style="width:60px"></label>
+        <label><input type="checkbox" id="cleanWt" checked> clean worktree</label>
+        <label><input type="checkbox" id="ciGreen" checked> CI green</label>
+      </div>
+      <div id="gates"></div>
+    </div>
+
+    <div class="card">
+      <h2>4 · monotonic YAML lattice (GLOBAL ≼ LEVEL ≼ ITEM)</h2>
+      <div class="row"><button class="act sec" onclick="compileLattice()">compile lattice</button>
+      <button class="act sec" onclick="resetYaml()">reset to bundle</button></div>
+      <h3>TIER 1 global</h3><textarea id="yaml0" spellcheck="false"></textarea>
+      <h3>TIER 2 LVL-2</h3><textarea id="yaml1" spellcheck="false"></textarea>
+      <h3>TIER 3 L2.2</h3><textarea id="yaml2" spellcheck="false"></textarea>
+      <div id="latticeOut" class="mono"></div>
+    </div>
+
+    <div class="card">
+      <h2>5 · rolling wave &amp; steward audit (PRINCE2)</h2>
+      <table id="levelsTbl"></table>
+      <h3>stage gate G2</h3>
+      <div class="row">
+        <select id="gateState" style="width:auto">
+          <option>/top/GateGovernance/Locked</option>
+          <option>/top/GateGovernance/Auditing</option>
+          <option>/top/GateGovernance/ReadyForSignOff</option>
+        </select>
+        <label>token burn <input type="number" id="burn" value="92000" style="width:90px"></label>
+        <label>elapsed d <input type="number" id="elapsed" value="9" style="width:70px"></label>
+      </div>
+      <div class="row">
+        <button class="act" onclick="stewardAudit()">steward.audit_gate</button>
+        <button class="act" onclick="pmSignoff()">PM: SIG_PM_SIGNOFF</button>
+        <button class="act sec" onclick="tryDecomposeLocked()">try SIG_DECOMPOSE on L4.1 (FUZZY_LOCKED)</button>
+      </div>
+      <div id="waveOut" class="log"></div>
+    </div>
+
+    <div class="card">
+      <h2>6 · conserved temporal lineage (SHA-256 hash chain)</h2>
+      <div class="row">
+        <button class="act sec" onclick="verifyChain()">lineage.verify</button>
+        <button class="act sec" onclick="tamperChain()">tamper event #1</button>
+        <button class="act sec" onclick="resetChain()">reset</button>
+      </div>
+      <div id="chainOut" class="log"></div>
+    </div>
+
+    <div class="card">
+      <h2>7 · virtual .md projection (I-MD-PROJECTION)</h2>
+      <button class="act" onclick="renderMd()">md.project</button>
+      <pre id="mdOut" style="max-height:300px; overflow:auto; margin-top:8px"></pre>
+    </div>
+  </div>
+</section>
+
+<section id="tab-concepts" class="tab">
+  <div class="concept"><h3>Active Object (Quantum Leaps QHsm / QActive)</h3>
+    <p>Each <code>PlanItem</code> / <code>StageGate</code> is an active object: it owns a private event queue and processes events <b>run-to-completion</b> — no shared mutable state between objects, only asynchronous signals (<code>SIG_*</code>). The TypeScript engine interprets the <code>.qm</code> XML directly instead of generating C/C++.</p>
+    <div class="meta">code: <code>src/hsm/qmXmlParser.ts</code>, <code>models/*.qm</code> · invariant: I-HSM-ONLY</div></div>
+
+  <div class="concept"><h3>Hierarchical state machine &amp; Q_SUPER inheritance</h3>
+    <p>States form a tree (<code>/top/Operational/Executing/InProgress</code>). When a leaf doesn't handle a signal, the engine walks <b>up</b> the superstate chain (<code>Q_SUPER</code> in QP) until a state with a matching <code>&lt;tran&gt;</code> is found — e.g. <code>SIG_BLOCK</code> from <code>InProgress</code> is handled by <code>/top/Operational</code>.</p>
+    <div class="meta">code: <code>resolveSignalWithQSuper</code> in <code>src/hsm/lcaEngine.ts</code></div></div>
+
+  <div class="concept"><h3>LCA transition: EXIT → ACTION → ENTRY</h3>
+    <p>For source S and target T, the <b>lowest common ancestor</b> is computed; states below it are exited <b>bottom-up</b>, the transition action runs once, then states down to T are entered <b>top-down</b> (plus composite <code>initial</code> drill-down). The trace is fully deterministic, e.g. <code>EXIT(InProgress: freeze_working_tree_diff();)</code>.</p>
+    <div class="meta">code: <code>executeLcaTransition</code> in <code>src/hsm/lcaEngine.ts</code> · SPEC-001 §3.2</div></div>
+
+  <div class="concept"><h3>Relative targets <code>../../2</code> + <code>target_path</code> validation</h3>
+    <p>In <code>.qm</code> XML, transitions address targets by tree coordinates: each <code>..</code> walks one level up, each integer picks the n-th child (0-indexed). If <code>target_path</code> is present, the parser checks the resolved coordinate against it at load time — broken statechart edits fail fast.</p>
+    <div class="meta">code: <code>resolveQmRelativeTarget</code> in <code>src/hsm/qmXmlParser.ts</code> · SPEC-001 §3.1</div></div>
+
+  <div class="concept"><h3>Monotonic YAML rule lattice</h3>
+    <p>Tiers <code>GLOBAL ≼ LEVEL ≼ ITEM</code> may only <b>tighten</b>: minimums take the <code>max</code>, ceilings the <code>min</code>, required predicates only union, role whitelists only shrink (subset). Any relaxation throws <code>MonotonicityViolationError</code> at compile time. Try lowering <code>min_test_coverage_pct</code> in tier 3 above and hit “compile lattice”.</p>
+    <div class="meta">code: <code>compileMonotonicYamlChain</code> in <code>src/rules/yamlLatticeCompiler.ts</code> · invariant: I-MONOTONIC-YAML</div></div>
+
+  <div class="concept"><h3>may() — three-gate capability check</h3>
+    <p>Every mutating verb (MCP tool, git hook) must pass: <b>Gate A</b> the intent's role whitelist resolved through the HSM superstate chain from the active state; <b>Gate B</b> the session's <code>[:ASSIGNED_TO]</code> roles intersect that whitelist; <b>Gate C</b> live telemetry satisfies the compiled monotonic guards (coverage floor, blocker ceiling, clean-worktree/CI predicates).</p>
+    <div class="meta">code: <code>evaluateMayGatekeeper</code> in <code>src/mcp/orchestrator.ts</code> · invariant: I-MAY-GATE</div></div>
+
+  <div class="concept"><h3>Conserved time-linear lineage (hash-chained events)</h3>
+    <p>Every mutation appends an immutable <code>TemporalEvent</code> to a singly-linked chain (<code>[:PREV_EVENT]</code>, head at <code>[:HEAD_EVENT]</code>) inside the same ACID transaction. Each event stores <code>chainHash = SHA256(prevHash :: eventId :: … :: trace)</code>, so any out-of-band edit breaks the chain — try “tamper event #1” then “lineage.verify”.</p>
+    <div class="meta">code: <code>appendConservedTemporalMutation</code> / <code>verifyTemporalLineageIntegrity</code> in <code>src/graph/lineageWriter.ts</code> · invariant: I-TEMPORAL-CHAIN</div></div>
+
+  <div class="concept"><h3>PRINCE2 rolling wave &amp; management by exception</h3>
+    <p>Levels (management stages) sit behind StageGates. Only the ACTIVE level (N) and lookahead (N+1) may decompose into tasks; N+2 stays <code>FUZZY_LOCKED</code>. The steward audits time/token/scope/quality tolerances; breaches escalate via <code>SIG_TOLERANCE_BREACH</code> (caught by <code>/top/GateGovernance</code> via Q_SUPER), and PM sign-off atomically shifts the wave: N→COMPLETED, N+1→ACTIVE, N+2→ROLLING_LOOKAHEAD.</p>
+    <div class="meta">code: <code>src/steward/stewardAuditEngine.ts</code> · invariant: I-ROLLING-WAVE</div></div>
+
+  <div class="concept"><h3>Markdown is a projection, never source of truth</h3>
+    <p><code>.md</code> files are rendered on demand from the Neo4j graph (frontmatter carries <code>head_lineage_sha256</code>). Editing the markdown does nothing; mutate via MCP verbs and re-project.</p>
+    <div class="meta">code: <code>renderVirtualMarkdownProjection</code> in <code>src/graph/mdProjector.ts</code> · invariant: I-MD-PROJECTION</div></div>
+
+  <div class="concept"><h3>MCP tool surface</h3>
+    <p><code>may</code>, <code>hsm.dispatch</code>, <code>plan.decompose_wave</code>, <code>task.sync_state</code>, <code>comms.post</code>, <code>rules.compile_check</code>, <code>steward.audit_gate</code>, <code>md.project</code>, <code>lineage.verify</code> — served over stdio (MCP) and loopback HTTP <code>127.0.0.1:4110</code> for the git pre-commit hook.</p>
+    <div class="meta">code: <code>src/mcp/server.ts</code> · SPEC-001 §6 / SPEC-003 §1</div></div>
+</section>
+</main>
+
+<script>
+"use strict";
+/* ===== assets inlined by simulator/build.mjs (verbatim copies of models/ and rules/) ===== */
+const PLAN_ITEM_QM = __PLAN_ITEM_QM__;
+const STAGE_GATE_QM = __STAGE_GATE_QM__;
+const YAML_BUNDLE = __YAML_BUNDLE__;
+
+/* ===== SHA-256 (UTF-8 safe) ===== */
+function sha256(ascii) {
+  function rr(v, a) { return (v >>> a) | (v << (32 - a)); }
+  const maxWord = Math.pow(2, 32);
+  let words = [], asciiBitLength = ascii.length * 8;
+  let hash = sha256.h = sha256.h || [], k = sha256.k = sha256.k || [];
+  let primeCounter = k.length; const isComposite = {};
+  for (let candidate = 2; primeCounter < 64; candidate++) {
+    if (!isComposite[candidate]) {
+      for (let i = 0; i < 313; i += candidate) isComposite[i] = candidate;
+      hash[primeCounter] = (Math.pow(candidate, 0.5) * maxWord) | 0;
+      k[primeCounter++] = (Math.pow(candidate, 1 / 3) * maxWord) | 0;
+    }
+  }
+  ascii += "\x80";
+  while (ascii.length % 64 - 56) ascii += "\x00";
+  for (let i = 0; i < ascii.length; i++) {
+    const j = ascii.charCodeAt(i);
+    if (j >> 8) return sha256(unescape(encodeURIComponent(ascii)));
+    words[i >> 2] |= j << ((3 - i) % 4) * 8;
+  }
+  words[words.length] = (asciiBitLength / maxWord) | 0;
+  words[words.length] = asciiBitLength;
+  for (let j = 0; j < words.length;) {
+    const w = words.slice(j, (j += 16)); const oldHash = hash;
+    hash = hash.slice(0, 8);
+    for (let i = 0; i < 64; i++) {
+      const w15 = w[i - 15], w2 = w[i - 2];
+      const a = hash[0], e = hash[4];
+      const t1 = hash[7] + (rr(e, 6) ^ rr(e, 11) ^ rr(e, 25)) + ((e & hash[5]) ^ (~e & hash[6])) + k[i]
+        + (w[i] = i < 16 ? w[i] : (w[i - 16] + (rr(w15, 7) ^ rr(w15, 18) ^ (w15 >>> 3)) + w[i - 7] + (rr(w2, 17) ^ rr(w2, 19) ^ (w2 >>> 10))) | 0);
+      const t2 = (rr(a, 2) ^ rr(a, 13) ^ rr(a, 22)) + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+      hash = [(t1 + t2) | 0].concat(hash);
+      hash[4] = (hash[4] + t1) | 0;
+    }
+    for (let i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
+  }
+  let out = "";
+  for (let i = 0; i < 8; i++) for (let j = 3; j + 1; j--) {
+    const b = (hash[i] >> (j * 8)) & 255;
+    out += (b < 16 ? "0" : "") + b.toString(16);
+  }
+  return out;
+}
+
+/* ===== tiny XML parser (enough for .qm files) ===== */
+function decodeEntities(s) {
+  return s.replace(/&(#x?[0-9a-fA-F]+|amp|lt|gt|quot|apos);/g, (m, e) => {
+    if (e[0] === "#") return String.fromCodePoint(e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10));
+    return { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" }[e];
+  });
+}
+function parseXml(str) {
+  let i = 0; const n = str.length;
+  function parseElement() {
+    i++; let name = "";
+    while (i < n && !/[\s/>]/.test(str[i])) name += str[i++];
+    const attrs = {};
+    while (i < n) {
+      while (i < n && /\s/.test(str[i])) i++;
+      if (str.startsWith("/>", i)) { i += 2; return { tag: name, attrs, children: [], text: "" }; }
+      if (str[i] === ">") { i++; break; }
+      let an = "";
+      while (i < n && !/[\s=/>]/.test(str[i])) an += str[i++];
+      while (i < n && /\s/.test(str[i])) i++;
+      if (str[i] === "=") {
+        i++; while (i < n && /\s/.test(str[i])) i++;
+        const q = str[i]; i++; let av = "";
+        while (i < n && str[i] !== q) av += str[i++];
+        i++; attrs[an] = decodeEntities(av);
+      } else attrs[an] = "";
+    }
+    const children = []; let text = "";
+    while (i < n) {
+      if (str.startsWith("</", i)) { i = str.indexOf(">", i) + 1; break; }
+      if (str[i] === "<") {
+        if (str.startsWith("<!--", i)) { i = str.indexOf("-->", i) + 3; continue; }
+        if (str.startsWith("<?", i)) { i = str.indexOf("?>", i) + 2; continue; }
+        children.push(parseElement());
+      } else {
+        let t = "";
+        while (i < n && str[i] !== "<") t += str[i++];
+        text += decodeEntities(t);
+      }
+    }
+    return { tag: name, attrs, children, text: text.trim() };
+  }
+  while (i < n) {
+    if (str.startsWith("<?", i)) { i = str.indexOf("?>", i) + 2; continue; }
+    if (str.startsWith("<!--", i)) { i = str.indexOf("-->", i) + 3; continue; }
+    if (/\s/.test(str[i])) { i++; continue; }
+    return parseElement();
+  }
+  throw new Error("empty XML");
+}
+const kids = (el, tag) => el.children.filter(c => c.tag === tag);
+const kid = (el, tag) => el.children.find(c => c.tag === tag);
+
+/* ===== .qm XML -> AST (mirrors src/hsm/qmXmlParser.ts) ===== */
+function splitActions(raw) {
+  if (!raw) return [];
+  return raw.split(";").map(s => s.trim()).filter(Boolean).map(s => s + ";");
+}
+function parseQmXml(xmlContent) {
+  const model = parseXml(xmlContent);
+  if (model.tag !== "model") throw new Error("Missing root <model> element in .qm XML");
+  const pkg = kid(model, "package"), cls = kid(pkg, "class"), sc = kid(cls, "statechart");
+  const statesByPath = new Map();
+  const deferredTran = [], deferredInit = [];
+  const rootNode = { name: "top", path: "/top", parentPath: null, depth: 0, entryHooks: ["init_neo4j_context();"], exitHooks: ["flush_audit_log();"], transitions: new Map(), childPaths: [] };
+  statesByPath.set("/top", rootNode);
+  function resolveRel(sourcePath, rawTarget) {
+    const segs = rawTarget.split("/").filter(Boolean);
+    let cursor = sourcePath;
+    for (const seg of segs) {
+      const node = statesByPath.get(cursor);
+      if (!node) throw new Error("Invalid cursor path '" + cursor + "' while resolving '" + rawTarget + "'");
+      if (seg === "..") { if (!node.parentPath) throw new Error("Cannot walk '..' above /top"); cursor = node.parentPath; }
+      else if (/^\d+$/.test(seg)) {
+        const idx = parseInt(seg, 10);
+        if (idx >= node.childPaths.length) throw new Error("Child index " + idx + " out of bounds on " + cursor);
+        cursor = node.childPaths[idx];
+      } else throw new Error("Unsupported relative coordinate token '" + seg + "'");
+    }
+    return cursor;
+  }
+  function walk(states, parentPath, depth) {
+    if (!states) return;
+    const parent = statesByPath.get(parentPath);
+    for (const st of states) {
+      const name = st.attrs.name;
+      const path = parentPath + "/" + name;
+      parent.childPaths.push(path);
+      const node = { name, path, parentPath, depth, entryHooks: splitActions((kid(st, "entry") || {}).text), exitHooks: splitActions((kid(st, "exit") || {}).text), transitions: new Map(), childPaths: [] };
+      statesByPath.set(path, node);
+      for (const tr of kids(st, "tran")) deferredTran.push({ ownerPath: path, tr });
+      const ini = kid(st, "initial");
+      if (ini) deferredInit.push({ ownerPath: path, ini });
+      walk(kids(st, "state"), path, depth + 1);
+    }
+  }
+  walk(kids(sc, "state"), "/top", 1);
+  for (const { ownerPath, tr } of deferredTran) {
+    const trig = tr.attrs.trig, raw = tr.attrs.target, explicit = tr.attrs.target_path;
+    const resolved = resolveRel(ownerPath, raw);
+    if (explicit && explicit !== resolved) throw new Error("QM Target Mismatch on " + ownerPath + " [" + trig + "]: '" + raw + "' resolved to '" + resolved + "', expected '" + explicit + "'");
+    statesByPath.get(ownerPath).transitions.set(trig, { trig, sourcePath: ownerPath, rawRelativeTarget: raw, targetPath: resolved, guardExpr: ((kid(tr, "guard") || {}).text || "").trim() || undefined, actionHooks: splitActions((kid(tr, "action") || {}).text) });
+  }
+  for (const { ownerPath, ini } of deferredInit) {
+    const resolved = resolveRel(ownerPath, ini.attrs.target);
+    if (ini.attrs.target_path && ini.attrs.target_path !== resolved) throw new Error("QM Initial Mismatch on " + ownerPath);
+    statesByPath.get(ownerPath).initialTargetPath = resolved;
+  }
+  const scInit = kid(sc, "initial");
+  return { framework: model.attrs.framework || "qpcpp", initialPath: (scInit && scInit.attrs.target_path) || "/top/HorizonWave", statesByPath };
+}
+
+/* ===== LCA engine (mirrors src/hsm/lcaEngine.ts) ===== */
+function getAncestorChain(ast, statePath) {
+  const chain = [];
+  let c = ast.statesByPath.get(statePath);
+  if (!c) throw new Error("Unknown HSM state path: " + statePath);
+  while (c) { chain.unshift(c); c = c.parentPath ? ast.statesByPath.get(c.parentPath) : undefined; }
+  return chain;
+}
+function resolveInitialDrillDown(ast, targetPath) {
+  let cur = targetPath; const seen = new Set([cur]);
+  while (true) {
+    const n = ast.statesByPath.get(cur);
+    if (!n || !n.initialTargetPath || seen.has(n.initialTargetPath)) return cur;
+    cur = n.initialTargetPath; seen.add(cur);
+  }
+}
+function resolveSignalWithQSuper(ast, activeLeafPath, trig) {
+  let c = ast.statesByPath.get(activeLeafPath);
+  while (c) {
+    const f = c.transitions.get(trig);
+    if (f) return { handlingState: c, transition: f };
+    c = c.parentPath ? ast.statesByPath.get(c.parentPath) : undefined;
+  }
+  return null;
+}
+function executeLcaTransition(ast, activeLeafPath, trig) {
+  const m = resolveSignalWithQSuper(ast, activeLeafPath, trig);
+  if (!m) return { handled: false, trig, handledBySuperstatePath: null, inheritedViaQSuper: false, fromStatePath: activeLeafPath, toStatePath: activeLeafPath, lcaStatePath: null, executionTrace: [] };
+  const { handlingState, transition } = m;
+  const target = resolveInitialDrillDown(ast, transition.targetPath);
+  const sa = getAncestorChain(ast, activeLeafPath), ta = getAncestorChain(ast, target);
+  let lca = sa[0];
+  const min = Math.min(sa.length, ta.length);
+  for (let i = 0; i < min; i++) { if (sa[i].path === ta[i].path) lca = sa[i]; else break; }
+  const trace = [];
+  let ec = ast.statesByPath.get(activeLeafPath);
+  while (ec && ec.path !== lca.path) {
+    trace.push("EXIT(" + ec.name + ": " + ec.exitHooks.join(" ") + ")");
+    ec = ec.parentPath ? ast.statesByPath.get(ec.parentPath) : undefined;
+  }
+  if (transition.actionHooks.length > 0) trace.push("ACTION(" + trig + ": " + transition.actionHooks.join(" ") + ")");
+  const li = ta.findIndex(x => x.path === lca.path);
+  for (const en of ta.slice(li + 1)) trace.push("ENTRY(" + en.name + ": " + en.entryHooks.join(" ") + ")");
+  return { handled: true, trig, handledBySuperstatePath: handlingState.path, inheritedViaQSuper: handlingState.path !== activeLeafPath, fromStatePath: activeLeafPath, toStatePath: target, lcaStatePath: lca.path, guardExpr: transition.guardExpr, executionTrace: trace };
+}
+
+/* ===== YAML subset parser (maps, lists, flow lists, scalars, comments) ===== */
+function stripComment(line) {
+  let q = null;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (q) { if (ch === q) q = null; }
+    else if (ch === '"' || ch === "'") q = ch;
+    else if (ch === "#" && (i === 0 || line[i - 1] === " " || line[i - 1] === "\t")) return line.slice(0, i);
+  }
+  return line;
+}
+function splitTop(s, sep) {
+  const out = []; let q = null, cur = "";
+  for (const ch of s) {
+    if (q) { cur += ch; if (ch === q) q = null; }
+    else if (ch === '"' || ch === "'") { q = ch; cur += ch; }
+    else if (ch === sep) { out.push(cur); cur = ""; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+function parseScalar(s) {
+  s = s.trim();
+  if (s.startsWith("[") && s.endsWith("]")) return splitTop(s.slice(1, -1), ",").filter(x => x.trim() !== "").map(parseScalar);
+  if (s.startsWith('"') && s.endsWith('"')) return s.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+  if (s.startsWith("'") && s.endsWith("'")) return s.slice(1, -1);
+  if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
+  if (s === "true") return true;
+  if (s === "false") return false;
+  if (s === "null" || s === "~") return null;
+  return s;
+}
+function parseYaml(text) {
+  const lines = [];
+  for (const l of text.split(/\r?\n/)) {
+    const noC = stripComment(l);
+    if (noC.trim() === "" || noC.trim() === "---") continue;
+    lines.push({ indent: noC.length - noC.trimStart().length, text: noC.trim() });
+  }
+  let pos = 0;
+  function colonIndex(t) {
+    let q = null;
+    for (let i = 0; i < t.length; i++) {
+      const ch = t[i];
+      if (q) { if (ch === q) q = null; }
+      else if (ch === '"' || ch === "'") q = ch;
+      else if (ch === ":" && (i + 1 === t.length || t[i + 1] === " ")) return i;
+    }
+    return -1;
+  }
+  function parseBlock(indent) {
+    if (lines[pos] && lines[pos].text.startsWith("- ")) {
+      const arr = [];
+      while (pos < lines.length && lines[pos].indent === indent && lines[pos].text.startsWith("- ")) { arr.push(parseScalar(lines[pos].text.slice(2))); pos++; }
+      return arr;
+    }
+    const obj = {};
+    while (pos < lines.length && lines[pos].indent === indent && !lines[pos].text.startsWith("- ")) {
+      const t = lines[pos].text, ci = colonIndex(t);
+      if (ci < 0) throw new Error("YAML: no colon in '" + t + "'");
+      const key = parseScalar(t.slice(0, ci)), rest = t.slice(ci + 1).trim();
+      pos++;
+      if (rest === "") obj[key] = (pos < lines.length && lines[pos].indent > indent) ? parseBlock(lines[pos].indent) : null;
+      else obj[key] = parseScalar(rest);
+    }
+    return obj;
+  }
+  return parseBlock(lines.length ? lines[0].indent : 0);
+}
+
+/* ===== monotonic lattice compiler (mirrors src/rules/yamlLatticeCompiler.ts) ===== */
+class MonotonicityViolationError extends Error {
+  constructor(m) { super(m); this.name = "MonotonicityViolationError"; }
+}
+function compileMonotonicYamlChain(yamlStrings) {
+  const tiers = yamlStrings.map(raw => parseYaml(raw));
+  if (tiers.length === 0) throw new Error("At least one Global YAML descriptor is required");
+  const root = tiers[0];
+  const g0 = root.guards || {};
+  const effective = {
+    min_test_coverage_pct: g0.min_test_coverage_pct !== undefined ? g0.min_test_coverage_pct : 0,
+    min_pr_approvals: g0.min_pr_approvals !== undefined ? g0.min_pr_approvals : 0,
+    max_open_blockers: g0.max_open_blockers !== undefined ? g0.max_open_blockers : 0,
+    max_token_burn: g0.max_token_burn !== undefined ? g0.max_token_burn : Number.MAX_SAFE_INTEGER,
+    required_predicates: new Set(g0.required_predicates || []),
+    state_capabilities: {},
+  };
+  for (const [sp, cap] of Object.entries(root.state_capabilities || {})) effective.state_capabilities[sp] = { ...cap.allowed_intents };
+  for (let i = 1; i < tiers.length; i++) {
+    const child = tiers[i], g = child.guards || {};
+    if (g.min_test_coverage_pct !== undefined) {
+      if (g.min_test_coverage_pct < effective.min_test_coverage_pct) throw new MonotonicityViolationError("[" + child.tier + ":" + child.target_id + "] Cannot relax min_test_coverage_pct from " + effective.min_test_coverage_pct + "% down to " + g.min_test_coverage_pct + "%");
+      effective.min_test_coverage_pct = Math.max(effective.min_test_coverage_pct, g.min_test_coverage_pct);
+    }
+    if (g.min_pr_approvals !== undefined) {
+      if (g.min_pr_approvals < effective.min_pr_approvals) throw new MonotonicityViolationError("[" + child.tier + ":" + child.target_id + "] Cannot relax min_pr_approvals from " + effective.min_pr_approvals + " down to " + g.min_pr_approvals);
+      effective.min_pr_approvals = Math.max(effective.min_pr_approvals, g.min_pr_approvals);
+    }
+    if (g.max_open_blockers !== undefined) {
+      if (g.max_open_blockers > effective.max_open_blockers) throw new MonotonicityViolationError("[" + child.tier + ":" + child.target_id + "] Cannot relax max_open_blockers ceiling from " + effective.max_open_blockers + " up to " + g.max_open_blockers);
+      effective.max_open_blockers = Math.min(effective.max_open_blockers, g.max_open_blockers);
+    }
+    if (g.max_token_burn !== undefined) {
+      if (g.max_token_burn > effective.max_token_burn) throw new MonotonicityViolationError("[" + child.tier + ":" + child.target_id + "] Cannot relax max_token_burn ceiling from " + effective.max_token_burn + " up to " + g.max_token_burn);
+      effective.max_token_burn = Math.min(effective.max_token_burn, g.max_token_burn);
+    }
+    if (g.required_predicates) {
+      const childSet = new Set(g.required_predicates);
+      for (const req of effective.required_predicates) if (!childSet.has(req)) throw new MonotonicityViolationError("[" + child.tier + ":" + child.target_id + "] Cannot remove inherited required predicate '" + req + "'");
+      for (const p of childSet) effective.required_predicates.add(p);
+    }
+    for (const [sp, cap] of Object.entries(child.state_capabilities || {})) {
+      effective.state_capabilities[sp] = effective.state_capabilities[sp] || {};
+      for (const [intent, childRoles] of Object.entries(cap.allowed_intents)) {
+        const parentRoles = effective.state_capabilities[sp][intent];
+        if (parentRoles) for (const r of childRoles) if (!parentRoles.includes(r)) throw new MonotonicityViolationError("[" + child.tier + ":" + child.target_id + "] Cannot grant role '" + r + "' on (" + sp + ", " + intent + ") not in parent whitelist [" + parentRoles.join(", ") + "]");
+        effective.state_capabilities[sp][intent] = childRoles;
+      }
+    }
+  }
+  return effective;
+}
+
+/* ===== may() gatekeeper (mirrors src/mcp/orchestrator.ts) ===== */
+function resolveHierarchicalStateCapability(ast, rules, activeStatePath, intent) {
+  const chain = getAncestorChain(ast, activeStatePath);
+  let allowedRoles = [], definingStatePath = "/top";
+  for (const s of chain) {
+    const caps = rules.state_capabilities[s.path];
+    if (caps && Object.prototype.hasOwnProperty.call(caps, intent)) { allowedRoles = caps[intent]; definingStatePath = s.path; }
+  }
+  return { allowedRoles, definingStatePath };
+}
+function evaluateMayGatekeeper(ast, rules, session, item, intent) {
+  const gates = [];
+  const { allowedRoles, definingStatePath } = resolveHierarchicalStateCapability(ast, rules, item.hsmStatePath, intent);
+  const gateA = allowedRoles.length > 0;
+  gates.push({ gate: "A", name: "QM HSM state capability", pass: gateA, detail: gateA ? "intent '" + intent + "' whitelisted for [" + allowedRoles.join(", ") + "] at " + definingStatePath + " (active: " + item.hsmStatePath + ")" : "Intent '" + intent + "' is disabled in state '" + item.hsmStatePath + "' (defined at '" + definingStatePath + "')." });
+  const gateB = session.assignedRoles.some(r => allowedRoles.includes(r));
+  gates.push({ gate: "B", name: "Session role binding", pass: gateB, detail: "caller [" + session.assignedRoles.join(", ") + "] ∩ allowed [" + allowedRoles.join(", ") + "] = " + (gateB ? "non-empty" : "EMPTY") });
+  const cFails = [];
+  if (rules.required_predicates.has("require_clean_worktree") && !item.cleanWorktree) cFails.push("Gate C (Monotonic YAML): Predicate 'require_clean_worktree' failed on " + item.itemId + ".");
+  if (intent !== "hsm.transition:SIG_UNBLOCK" && intent !== "hsm.transition:SIG_BLOCK" && item.openBlockersCount > rules.max_open_blockers) cFails.push("Gate C (Monotonic YAML): openBlockersCount (" + item.openBlockersCount + ") > max_open_blockers (" + rules.max_open_blockers + ").");
+  if (intent === "hsm.transition:SIG_VERIFY" || intent === "git.merge") {
+    if (item.testCoveragePct < rules.min_test_coverage_pct) cFails.push("Gate C (Monotonic YAML): testCoveragePct (" + item.testCoveragePct + "%) < tightened min_test_coverage_pct (" + rules.min_test_coverage_pct + "%).");
+    if (rules.required_predicates.has("require_ci_green") && !item.ciGreen) cFails.push("Gate C (Monotonic YAML): Predicate 'require_ci_green' failed on " + item.itemId + ".");
+  }
+  const gateC = cFails.length === 0;
+  gates.push({ gate: "C", name: "Monotonic YAML guards", pass: gateC, detail: gateC ? "all guards pass (min_coverage=" + rules.min_test_coverage_pct + "%, max_blockers=" + rules.max_open_blockers + ", predicates=" + [...rules.required_predicates].join(",") + ")" : cFails.join(" ") });
+  const allow = gateA && gateB && gateC;
+  let denyReason;
+  if (!gateA) denyReason = "Gate A (QM HSM Lock): Intent '" + intent + "' is disabled in state '" + item.hsmStatePath + "' (defined at '" + definingStatePath + "').";
+  else if (!gateB) denyReason = "Gate B (Role Mismatch): Session '" + session.sessionId + "' roles [" + session.assignedRoles.join(", ") + "] not in allowed [" + allowedRoles.join(", ") + "].";
+  else if (!gateC) denyReason = cFails[0];
+  return { allow, sessionId: session.sessionId, itemId: item.itemId, intent, hsmStatePath: item.hsmStatePath, definingStateForCapability: definingStatePath, allowedRolesForIntent: allowedRoles, callerRoles: session.assignedRoles, denyReason, gates };
+}
+
+/* ===== steward / rolling wave (mirrors src/steward/stewardAuditEngine.ts) ===== */
+function evaluateStageBoundaryAudit(level, items, gate) {
+  const breaches = [];
+  const verified = items.filter(i => i.hsmStatePath === "/top/VerifiedDone").length;
+  const allVerified = items.length > 0 && verified === items.length;
+  const totalBlockers = items.reduce((a, i) => a + i.openBlockersCount, 0);
+  const minCov = items.length ? Math.min(...items.map(i => i.testCoveragePct)) : 0;
+  const tokenCeiling = Math.round(level.tokenBudgetMax * (1 + level.tokenTolerancePct));
+  const schedCeiling = level.plannedDays + level.timeToleranceDays;
+  if (level.tokenBurnCurrent > tokenCeiling) breaches.push("TOKEN_TOLERANCE_BREACH: Burn (" + level.tokenBurnCurrent + ") exceeds ceiling (" + tokenCeiling + ")");
+  if (level.elapsedDays > schedCeiling) breaches.push("TIME_TOLERANCE_BREACH: Elapsed (" + level.elapsedDays + "d) exceeds ceiling (" + schedCeiling + "d)");
+  if (totalBlockers > 0) breaches.push("BLOCKER_BREACH: " + totalBlockers + " unresolved blocker(s) in stage " + level.id);
+  if (items.length > 0 && minCov < level.minStageCoveragePct) breaches.push("QUALITY_FLOOR_BREACH: Min item coverage (" + minCov + "%) < stage floor (" + level.minStageCoveragePct + "%)");
+  const withinTolerance = breaches.length === 0;
+  let recommendedSignal = "NONE";
+  if (!withinTolerance) recommendedSignal = gate.hsmStatePath === "/top/GateGovernance/Auditing" ? "SIG_AUDIT_FAIL" : "SIG_TOLERANCE_BREACH";
+  else if (allVerified && gate.hsmStatePath === "/top/GateGovernance/Locked") recommendedSignal = "SIG_REQUEST_AUDIT";
+  else if (allVerified && withinTolerance && gate.hsmStatePath === "/top/GateGovernance/Auditing") recommendedSignal = "SIG_AUDIT_PASS";
+  return { gateId: gate.id, levelId: level.id, withinTolerance, allItemsVerified: allVerified, recommendedSignal, breaches, metrics: { verifiedItemsCount: verified, totalItemsCount: items.length, minCoverageObserved: minCov, totalOpenBlockers: totalBlockers, tokenCeiling, scheduleCeilingDays: schedCeiling } };
+}
+function canDecomposeWaveItem(level, item) {
+  if (item.hsmStatePath !== "/top/HorizonWave") return { allowed: false, reason: "Item " + item.id + " is already outside /top/HorizonWave (" + item.hsmStatePath + ")" };
+  if (level.horizonMode === "FUZZY_LOCKED") return { allowed: false, reason: "PRINCE2 Rolling Wave Lock: Level " + level.id + " is in FUZZY_LOCKED horizon. Pass upstream StageGate first." };
+  if (level.horizonMode === "COMPLETED") return { allowed: false, reason: "Level " + level.id + " is already COMPLETED." };
+  return { allowed: true, reason: "Level " + level.id + " is in " + level.horizonMode + "; wave decomposition permitted." };
+}
+function advanceRollingWaveLevels(gateAst, gate, levels, callerRole) {
+  if (callerRole !== "PM") throw new Error("Role '" + callerRole + "' cannot dispatch SIG_PM_SIGNOFF; requires 'PM'");
+  if (gate.hsmStatePath !== "/top/GateGovernance/ReadyForSignOff") throw new Error("Gate " + gate.id + " must be in /top/GateGovernance/ReadyForSignOff (current: " + gate.hsmStatePath + ")");
+  const lcaResult = executeLcaTransition(gateAst, gate.hsmStatePath, "SIG_PM_SIGNOFF");
+  const fromIdx = levels.findIndex(l => l.id === gate.fromLevelId);
+  const toIdx = levels.findIndex(l => l.id === gate.toLevelId);
+  const updatedLevels = levels.map((lvl, idx) => {
+    if (idx === fromIdx) return { ...lvl, horizonMode: "COMPLETED" };
+    if (idx === toIdx) return { ...lvl, horizonMode: "ACTIVE" };
+    if (idx === toIdx + 1 && lvl.horizonMode === "FUZZY_LOCKED") return { ...lvl, horizonMode: "ROLLING_LOOKAHEAD" };
+    return lvl;
+  });
+  return { lcaResult, updatedGate: { ...gate, hsmStatePath: lcaResult.toStatePath }, updatedLevels };
+}
+
+/* ===== lineage (mirrors src/graph/lineageWriter.ts) ===== */
+function computeTemporalChainHash(prevHash, p) {
+  const canonical = [prevHash, p.eventId, p.planId, p.sessionId, p.targetId, p.mcpVerb, p.signal, p.fromState, p.toState, p.lcaState, p.entryExitTrace.join("|")].join("::");
+  return sha256(canonical);
+}
+const lineage = { headHash: "GENESIS_0000000000000000", events: [], seq: 0 };
+function appendLineage(input) {
+  const eventId = "EVT-" + String(++lineage.seq).padStart(4, "0");
+  const evt = { eventId, timestampIso: new Date().toISOString(), planId: input.planId, sessionId: input.sessionId, targetId: input.targetId, mcpVerb: input.mcpVerb, signal: input.signal, fromState: input.fromState, toState: input.toState, lcaState: input.lcaState, entryExitTrace: input.entryExitTrace, prevHash: lineage.headHash, chainHash: "" };
+  evt.chainHash = computeTemporalChainHash(evt.prevHash, evt);
+  lineage.events.push(evt);
+  lineage.headHash = evt.chainHash;
+  return evt;
+}
+function verifyLineage(events) {
+  let expected = "GENESIS_0000000000000000";
+  for (const evt of events) {
+    if (evt.prevHash !== expected) return { valid: false, brokenAtEventId: evt.eventId, reason: "Broken prevHash link: expected '" + expected + "', found '" + evt.prevHash + "'" };
+    const recomputed = computeTemporalChainHash(evt.prevHash, evt);
+    if (recomputed !== evt.chainHash) return { valid: false, brokenAtEventId: evt.eventId, reason: "Tampered payload checksum on " + evt.eventId };
+    expected = evt.chainHash;
+  }
+  return { valid: true };
+}
+
+/* ===== virtual md projection (simplified mirror of src/graph/mdProjector.ts) ===== */
+function renderMd(planId, title, levels) {
+  const lines = ["---", 'plan_id: "' + planId + '"', 'projection_mode: "READ_ONLY_NEO4J_SNAPSHOT"', 'head_lineage_sha256: "' + lineage.headHash + '"', 'warning: "DO NOT EDIT MANUALLY - MUTATE VIA MCP VERBS"', "---", "", "# " + title + " (`" + planId + "`)", ""];
+  for (const lvl of levels) {
+    lines.push("## Level " + lvl.index + ": " + lvl.title + " (`" + lvl.id + "` — Horizon: `" + lvl.horizonMode + "`)");
+    if (lvl.horizonMode === "FUZZY_LOCKED") { lines.push("_Fuzzy Horizon Stage: Decomposition locked until upstream Stage Gate signs off._", ""); continue; }
+    for (const it of lvl.items) {
+      lines.push("- " + (it.hsmStatePath === "/top/VerifiedDone" ? "[x]" : "[ ]") + " **`" + it.id + "`: " + it.title + "**");
+      lines.push("  - **QM HSM State:** `" + it.hsmStatePath + "` | **Coverage:** `" + it.testCoveragePct + "%` | **Blockers:** `" + it.openBlockersCount + "`");
+      lines.push("");
+    }
+  }
+  return lines.join("\n");
+}
+
+/* ===== export core for tests (node vm) ===== */
+globalThis.__sim = { sha256, parseXml, parseQmXml, getAncestorChain, executeLcaTransition, resolveSignalWithQSuper, parseYaml, compileMonotonicYamlChain, MonotonicityViolationError, resolveHierarchicalStateCapability, evaluateMayGatekeeper, evaluateStageBoundaryAudit, canDecomposeWaveItem, advanceRollingWaveLevels, computeTemporalChainHash, appendLineage, verifyLineage, renderMd, lineage, PLAN_ITEM_QM, STAGE_GATE_QM, YAML_BUNDLE };
+
+/* ===== UI (browser only) ===== */
+if (typeof document !== "undefined") {
+  const state = {
+    ast: null, rules: null,
+    activePath: "/top/Operational/Executing/InProgress",
+    sessionId: "@coder-01",
+    levels: [
+      { id: "LVL-2", index: 2, title: "QM HSM Engine & MCP Gatekeeper", horizonMode: "ACTIVE", plannedDays: 10, elapsedDays: 9, timeToleranceDays: 2, tokenBudgetMax: 100000, tokenBurnCurrent: 92000, tokenTolerancePct: 0.1, minStageCoveragePct: 85 },
+      { id: "LVL-3", index: 3, title: "Steward & StageGate", horizonMode: "ROLLING_LOOKAHEAD", plannedDays: 14, elapsedDays: 0, timeToleranceDays: 3, tokenBudgetMax: 120000, tokenBurnCurrent: 0, tokenTolerancePct: 0.1, minStageCoveragePct: 85 },
+      { id: "LVL-4", index: 4, title: "Neo4j lineage & MD projector", horizonMode: "FUZZY_LOCKED", plannedDays: 20, elapsedDays: 0, timeToleranceDays: 4, tokenBudgetMax: 150000, tokenBurnCurrent: 0, tokenTolerancePct: 0.1, minStageCoveragePct: 90 }
+    ],
+    gate: { id: "G2", fromLevelId: "LVL-2", toLevelId: "LVL-3", hsmStatePath: "/top/GateGovernance/Locked", exceptionPlanApproved: false }
+  };
+  const $ = id => document.getElementById(id);
+  function showTab(t) {
+    $("tab-sim").classList.toggle("on", t === "sim");
+    $("tab-concepts").classList.toggle("on", t === "concepts");
+    $("nav-sim").classList.toggle("on", t === "sim");
+    $("nav-concepts").classList.toggle("on", t === "concepts");
+  }
+  globalThis.showTab = showTab;
+  function itemCtx() {
+    return { planId: "PLAN-CORE-2026", itemId: "L2.2", levelId: "LVL-2", hsmStatePath: state.activePath, testCoveragePct: Number($("cov").value), openBlockersCount: Number($("blockers").value), prApprovalsCount: 2, cleanWorktree: $("cleanWt").checked, ciGreen: $("ciGreen").checked, qmAstLintPass: true };
+  }
+  function roles() { return [...document.querySelectorAll(".role")].filter(c => c.checked).map(c => c.value); }
+  function loadModel() {
+    state.ast = parseQmXml($("qmXml").value);
+    if (!state.ast.statesByPath.has(state.activePath)) state.activePath = state.ast.initialPath;
+    renderTree(); renderSignals(); renderIntentSel(); $("activePath").textContent = state.activePath;
+  }
+  function renderTree() {
+    const root = state.ast.statesByPath.get("/top");
+    function node(path) {
+      const n = state.ast.statesByPath.get(path);
+      const li = document.createElement("li");
+      const sp = document.createElement("span");
+      sp.textContent = n.name + (n.transitions.size ? " ⚡" + [...n.transitions.keys()].join(",") : "");
+      if (n.childPaths.length) sp.className = "comp";
+      if (path === state.activePath) sp.classList.add("active");
+      sp.title = path;
+      sp.onclick = () => { state.activePath = path; renderTree(); $("activePath").textContent = path; };
+      li.appendChild(sp);
+      if (n.childPaths.length) {
+        const ul = document.createElement("ul"); ul.className = "tree";
+        for (const c of n.childPaths) ul.appendChild(node(c));
+        li.appendChild(ul);
+      }
+      return li;
+    }
+    const ul = $("tree"); ul.innerHTML = "";
+    const top = document.createElement("ul"); top.className = "tree";
+    const li = document.createElement("li");
+    const sp = document.createElement("span"); sp.textContent = "/top"; sp.className = "comp"; if (state.activePath === "/top") sp.classList.add("active");
+    li.appendChild(sp);
+    const inner = document.createElement("ul"); inner.className = "tree";
+    for (const c of root.childPaths) inner.appendChild(node(c));
+    li.appendChild(inner); top.appendChild(li); ul.appendChild(top);
+  }
+  function renderSignals() {
+    const trigs = new Set();
+    for (const [, n] of state.ast.statesByPath) for (const t of n.transitions.keys()) trigs.add(t);
+    const box = $("signals"); box.innerHTML = "";
+    for (const t of [...trigs].sort()) {
+      const b = document.createElement("button");
+      b.className = "act sec sig"; b.textContent = t;
+      b.onclick = () => dispatchSignal(t);
+      box.appendChild(b);
+    }
+  }
+  function renderIntentSel() {
+    const intents = new Set(["git.commit", "git.merge", "comms.post", "task.mutate", "item.edit_spec", "test.publish"]);
+    for (const caps of Object.values(state.rules.state_capabilities)) for (const i of Object.keys(caps)) intents.add(i);
+    const sel = $("intentSel"); sel.innerHTML = "";
+    for (const i of [...intents].sort()) { const o = document.createElement("option"); o.value = i; o.textContent = i; sel.appendChild(o); }
+  }
+  function logTrace(msg, cls) {
+    const d = document.createElement("div");
+    d.className = cls || "dim";
+    d.textContent = msg;
+    $("trace").appendChild(d);
+    $("trace").scrollTop = $("trace").scrollHeight;
+  }
+  function showMay(res) {
+    const box = $("mayOut");
+    box.textContent = "allow = " + res.allow + (res.denyReason ? " — " + res.denyReason : "");
+    box.className = "kv " + (res.allow ? "ok" : "bad");
+    const g = $("gates"); g.innerHTML = "";
+    for (const gt of res.gates || []) {
+      const d = document.createElement("div");
+      d.className = "gate " + (gt.pass ? "pass" : "fail");
+      const b = document.createElement("b"); b.textContent = "Gate " + gt.gate;
+      d.appendChild(b);
+      d.appendChild(document.createTextNode(" " + gt.name + " — " + (gt.pass ? "PASS" : "FAIL")));
+      const det = document.createElement("div"); det.className = "dim"; det.textContent = gt.detail;
+      d.appendChild(det);
+      g.appendChild(d);
+    }
+  }
+  function dispatchSignal(trig) {
+    $("trace").innerHTML = "";
+    state.sessionId = $("sessionId").value || "@unknown";
+    const intent = "hsm.transition:" + trig;
+    const mayRes = evaluateMayGatekeeper(state.ast, state.rules, { sessionId: state.sessionId, assignedRoles: roles() }, itemCtx(), intent);
+    showMay(mayRes);
+    if (!mayRes.allow && !$("force").checked) { logTrace("MCP_ERR_MAY_DENIED: " + mayRes.denyReason, "deny"); return; }
+    const res = executeLcaTransition(state.ast, state.activePath, trig);
+    if (!res.handled) { logTrace("IGNORED_UNHANDLED_SIGNAL: " + trig, "dim"); return; }
+    logTrace("signal " + trig + " handled by " + res.handledBySuperstatePath + (res.inheritedViaQSuper ? " (Q_SUPER)" : "") + " | LCA = " + res.lcaStatePath + (res.guardExpr ? " | guard " + res.guardExpr : ""), "dim");
+    res.executionTrace.forEach((t, idx) => setTimeout(() => {
+      logTrace(t, t.startsWith("EXIT") ? "exit" : t.startsWith("ACTION") ? "action" : "entry");
+    }, 250 * idx));
+    state.activePath = res.toStatePath;
+    const evt = appendLineage({ planId: "PLAN-CORE-2026", sessionId: state.sessionId, targetId: "L2.2", mcpVerb: "hsm.dispatch", signal: trig, fromState: res.fromStatePath, toState: res.toStatePath, lcaState: res.lcaStatePath, entryExitTrace: res.executionTrace });
+    setTimeout(() => { logTrace("lineage: " + evt.eventId + " chainHash=" + evt.chainHash.slice(0, 16) + "… toState=" + res.toStatePath, "ok"); renderTree(); $("activePath").textContent = state.activePath; renderChain(); renderLevels(); }, 250 * res.executionTrace.length + 100);
+  }
+  function runMay() {
+    const res = evaluateMayGatekeeper(state.ast, state.rules, { sessionId: state.sessionId, assignedRoles: roles() }, itemCtx(), $("intentSel").value);
+    showMay(res);
+  }
+  function compileLattice() {
+    const out = $("latticeOut");
+    try {
+      state.rules = compileMonotonicYamlChain([$("yaml0").value, $("yaml1").value, $("yaml2").value]);
+      out.className = "mono ok";
+      out.textContent = "COMPILED effective ruleset:\n" + JSON.stringify({ ...state.rules, required_predicates: [...state.rules.required_predicates] }, null, 1);
+      renderIntentSel();
+    } catch (e) {
+      out.className = "mono bad";
+      out.textContent = (e.name || "Error") + ": " + e.message;
+    }
+  }
+  function resetYaml() {
+    const docs = YAML_BUNDLE.split(/^---$/m);
+    $("yaml0").value = docs[0] || ""; $("yaml1").value = docs[1] || ""; $("yaml2").value = docs[2] || "";
+    compileLattice();
+  }
+  function renderLevels() {
+    const t = $("levelsTbl");
+    t.innerHTML = "<tr><th>Level</th><th>horizon</th><th>gate state</th></tr>";
+    for (const l of state.levels) {
+      const tr = document.createElement("tr");
+      const td1 = document.createElement("td"); td1.textContent = l.id + " (L" + l.index + ")";
+      const td2 = document.createElement("td"); td2.textContent = l.horizonMode;
+      const td3 = document.createElement("td"); td3.textContent = l.id === "LVL-2" ? state.gate.hsmStatePath : "—";
+      tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+      t.appendChild(tr);
+    }
+  }
+  function waveItems() {
+    return [
+      { id: "L2.1", levelId: "LVL-2", hsmStatePath: "/top/VerifiedDone", testCoveragePct: 91, openBlockersCount: 0, cleanWorktree: true, ciGreen: true },
+      { id: "L2.2", levelId: "LVL-2", hsmStatePath: state.activePath, testCoveragePct: Number($("cov").value), openBlockersCount: Number($("blockers").value), cleanWorktree: $("cleanWt").checked, ciGreen: $("ciGreen").checked }
+    ];
+  }
+  function waveLog(m, c) {
+    const d = document.createElement("div");
+    d.className = c || "";
+    d.textContent = m;
+    $("waveOut").appendChild(d);
+  }
+  function stewardAudit() {
+    $("waveOut").innerHTML = "";
+    const lvl = { ...state.levels[0], tokenBurnCurrent: Number($("burn").value), elapsedDays: Number($("elapsed").value) };
+    state.gate.hsmStatePath = $("gateState").value;
+    const rep = evaluateStageBoundaryAudit(lvl, waveItems(), state.gate);
+    waveLog("withinTolerance=" + rep.withinTolerance + " allItemsVerified=" + rep.allItemsVerified + " → recommendedSignal=" + rep.recommendedSignal, rep.withinTolerance ? "ok" : "deny");
+    rep.breaches.forEach(b => waveLog("⚠ " + b, "bad"));
+    waveLog(JSON.stringify(rep.metrics), "dim");
+    renderLevels();
+  }
+  function pmSignoff() {
+    $("waveOut").innerHTML = "";
+    try {
+      state.gate.hsmStatePath = $("gateState").value;
+      const gateAst = parseQmXml(STAGE_GATE_QM);
+      const r = advanceRollingWaveLevels(gateAst, state.gate, state.levels, "PM");
+      state.gate = r.updatedGate; state.levels = r.updatedLevels;
+      waveLog("SIG_PM_SIGNOFF: gate → " + r.updatedGate.hsmStatePath + " (LCA " + r.lcaResult.lcaStatePath + ")", "ok");
+      r.updatedLevels.forEach(l => waveLog(l.id + " → " + l.horizonMode, l.horizonMode === "ACTIVE" ? "ok" : "dim"));
+      const evt = appendLineage({ planId: "PLAN-CORE-2026", sessionId: "@pm-01", targetId: "G2", mcpVerb: "hsm.dispatch", signal: "SIG_PM_SIGNOFF", fromState: "/top/GateGovernance/ReadyForSignOff", toState: r.updatedGate.hsmStatePath, lcaState: r.lcaResult.lcaStatePath, entryExitTrace: r.lcaResult.executionTrace });
+      waveLog("lineage: " + evt.eventId + " chainHash=" + evt.chainHash.slice(0, 16) + "…", "ok");
+    } catch (e) { waveLog("ERROR: " + e.message, "bad"); }
+    renderLevels(); renderChain();
+  }
+  function tryDecomposeLocked() {
+    const r = canDecomposeWaveItem(state.levels[2], { id: "L4.1", levelId: "LVL-4", hsmStatePath: "/top/HorizonWave", testCoveragePct: 0, openBlockersCount: 0, cleanWorktree: true, ciGreen: false });
+    waveLog((r.allowed ? "ALLOWED: " : "DENIED: ") + r.reason, r.allowed ? "ok" : "bad");
+  }
+  function renderChain() {
+    const out = $("chainOut"); out.innerHTML = "";
+    const v = verifyLineage(lineage.events);
+    const hd = document.createElement("div");
+    hd.className = v.valid ? "ok" : "bad";
+    hd.textContent = "chain: " + lineage.events.length + " events, head=" + lineage.headHash.slice(0, 16) + "… → " + (v.valid ? "VALID" : "INVALID @ " + v.brokenAtEventId + ": " + v.reason);
+    out.appendChild(hd);
+    for (const e of lineage.events) {
+      const d = document.createElement("div");
+      d.className = "dim";
+      d.textContent = e.eventId + " " + e.mcpVerb + "/" + e.signal + " " + e.fromState + " → " + e.toState + " | " + e.prevHash.slice(0, 10) + "… → " + e.chainHash.slice(0, 16) + "…";
+      out.appendChild(d);
+    }
+  }
+  function verifyChain() { renderChain(); }
+  function tamperChain() { if (lineage.events[0]) lineage.events[0].fromState = "/top/TamperedState"; renderChain(); }
+  function resetChain() { lineage.headHash = "GENESIS_0000000000000000"; lineage.events = []; lineage.seq = 0; renderChain(); }
+  function renderMdPanel() {
+    const levels = state.levels.map(l => ({ ...l, items: l.id === "LVL-2" ? waveItems() : [] }));
+    $("mdOut").textContent = renderMd("PLAN-CORE-2026", "Local QM HSM & MCP Orchestration Plan", levels);
+  }
+  globalThis.loadModel = loadModel; globalThis.runMay = runMay; globalThis.compileLattice = compileLattice;
+  globalThis.resetYaml = resetYaml; globalThis.stewardAudit = stewardAudit; globalThis.pmSignoff = pmSignoff;
+  globalThis.tryDecomposeLocked = tryDecomposeLocked; globalThis.verifyChain = verifyChain;
+  globalThis.tamperChain = tamperChain; globalThis.resetChain = resetChain; globalThis.renderMd = renderMdPanel;
+  document.addEventListener("DOMContentLoaded", () => {
+    $("qmXml").value = PLAN_ITEM_QM;
+    resetYaml();
+    loadModel();
+    $("modelSel").onchange = () => {
+      $("qmXml").value = $("modelSel").value === "plan_item" ? PLAN_ITEM_QM : STAGE_GATE_QM;
+      state.activePath = "/top/Operational/Executing/InProgress";
+      loadModel();
+    };
+    renderLevels(); renderChain();
+  });
+}
+</script>
+</body>
+</html>

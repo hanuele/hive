@@ -25,6 +25,9 @@ universal `may()` capability gatekeeper, Neo4j SHA-256 temporal lineage, a virtu
 | `hooks/pre-commit` | SPEC-001 §5.2 | `may()` pre-flight git hook |
 | `tests/phase{1,2,3}.spec.ts` | spec suites | Verbatim spec verification suites |
 | `tests/server.spec.ts` | SPEC-003 | HTTP gatekeeper + tool-registry smoke tests |
+| `tests/simulator.spec.ts` | — | Verifies the in-browser simulator core mirrors the TS engine (run in a node VM) |
+| `simulator/index.html` | — | Self-contained interactive simulator + concept explainer (no build, no network; open in a browser) |
+| `simulator/build.mjs` | — | Inlines `models/*.qm` + `rules/*.yaml` into `simulator/index.html` (`npm run sim`) |
 
 ## Invariants enforced
 
@@ -39,8 +42,12 @@ universal `may()` capability gatekeeper, Neo4j SHA-256 temporal lineage, a virtu
 
 ```bash
 npm install
-npm test          # vitest: phase1 + phase2 + phase3 + server suites
+npm test          # vitest: phase1 + phase2 + phase3 + server + simulator suites
 npm run typecheck # tsc --noEmit
+npm run sim       # regenerate simulator/index.html from models/ + rules/
+# open simulator/index.html in a browser — interactive .qm dispatch, may() gates,
+# YAML lattice compiler, rolling wave, hash-chain tamper demo, .md projection,
+# plus a "Concepts explained" tab
 MCP_PORT=4110 bun src/mcp/server.ts        # loopback HTTP gatekeeper (demo, in-memory lineage)
 MCP_STDIO=1 MCP_PORT=4110 bun src/mcp/server.ts  # + stdio MCP transport
 ```
