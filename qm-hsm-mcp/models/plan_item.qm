@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model version="6.1.1" framework="qpcpp">
+ <documentation>PRINCE2 PlanItem Active Object Statechart (Direct TypeScript MCP AST Engine)</documentation>
+ <package name="Plans" stereotype="0x02">
+  <class name="PlanItemAo" superclass="qpcpp::QActive">
+   <statechart properties="0x01">
+    <initial target="../0" target_path="/top/HorizonWave">
+     <action>init_neo4j_context();</action>
+    </initial>
+
+    <!-- Child 0 of /top: HorizonWave (Rolling Wave Lookahead State) -->
+    <state name="HorizonWave">
+     <entry>lock_git_branch();</entry>
+     <exit>spawn_kanban_tasks();</exit>
+     <tran trig="SIG_DECOMPOSE" target="../1/0/0" target_path="/top/Operational/Executing/InProgress">
+      <guard>G_WAVE_UNLOCKED</guard>
+      <action>mcp.plan.decompose_wave();</action>
+     </tran>
+    </state>
+
+    <!-- Child 1 of /top: Operational (Composite Superstate for Active Stage Work Packages) -->
+    <state name="Operational">
+     <entry>bind_multiplexed_sessions(); subscribe_item_bus();</entry>
+     <exit>release_session_locks();</exit>
+
+     <!-- Behavioral Inheritance (Q_SUPER): Catches SIG_BLOCK & SIG_CANCEL from any nested substate -->
+     <tran trig="SIG_BLOCK" target="1" target_path="/top/Operational/BlockedException">
+      <guard>G_ALWAYS</guard>
+      <action>steward.raise_exception("ESC-09");</action>
+     </tran>
+     <tran trig="SIG_CANCEL" target="../3" target_path="/top/Cancelled">
+      <guard>G_PM_AUTH</guard>
+      <action>neo4j.mark_cancelled();</action>
+     </tran>
+
+     <!-- Child 0 of /top/Operational: Executing (Composite Superstate) -->
+     <state name="Executing">
+      <entry>start_stage_tolerance_timer();</entry>
+      <exit>snapshot_execution_metrics();</exit>
+
+      <!-- Child 0 of Executing: InProgress -->
+      <state name="InProgress">
+       <entry>enable_git_commit_hook(ALLOW_IMPL); notify_channel("WORK_ACTIVE");</entry>
+       <exit>freeze_working_tree_diff();</exit>
+       <tran trig="SIG_SUBMIT_PR" target="../1" target_path="/top/Operational/Executing/WaitingReview">
+        <guard>G_SUBMIT_PR_RULES</guard>
+        <action>git.open_or_update_pr();</action>
+       </tran>
+      </state>
+
+      <!-- Child 1 of Executing: WaitingReview -->
+      <state name="WaitingReview">
+       <entry>enable_git_commit_hook(DENY_IMPL); request_reviewer_quorum();</entry>
+       <exit>record_review_verdict();</exit>
+       <tran trig="SIG_VERIFY" target="../../../2" target_path="/top/VerifiedDone">
+        <guard>G_VERIFY_MONOTONIC_YAML</guard>
+        <action>git.merge_pr(); rollup_level_gate();</action>
+       </tran>
+       <tran trig="SIG_REJECT_PR" target="../0" target_path="/top/Operational/Executing/InProgress">
+        <guard>G_ALWAYS</guard>
+        <action>comms.post_review_feedback();</action>
+       </tran>
+      </state>
+     </state>
+
+     <!-- Child 1 of /top/Operational: BlockedException -->
+     <state name="BlockedException">
+      <entry>enable_git_commit_hook(DENY_ALL); escalate_to_steward("ESC-09");</entry>
+      <exit>clear_escalation_flag("ESC-09");</exit>
+      <tran trig="SIG_UNBLOCK" target="../0/0" target_path="/top/Operational/Executing/InProgress">
+       <guard>G_UNBLOCK_REMEDIATED</guard>
+       <action>steward.close_exception("ESC-09");</action>
+      </tran>
+     </state>
+    </state>
+
+    <!-- Child 2 of /top: VerifiedDone -->
+    <state name="VerifiedDone">
+     <entry>seal_artifact_hash(); emit_parent_signal("SIG_CHILD_DONE");</entry>
+     <exit>reopen_audit_trail();</exit>
+     <tran trig="SIG_REOPEN" target="../1/0/0" target_path="/top/Operational/Executing/InProgress">
+      <guard>G_PM_AUTH</guard>
+      <action>neo4j.log_reopen();</action>
+     </tran>
+    </state>
+
+    <!-- Child 3 of /top: Cancelled -->
+    <state name="Cancelled">
+     <entry>archive_work_package();</entry>
+     <exit>restore_work_package();</exit>
+    </state>
+   </statechart>
+  </class>
+ </package>
+</model>

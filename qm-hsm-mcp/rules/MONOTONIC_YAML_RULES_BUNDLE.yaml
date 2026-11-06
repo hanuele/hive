@@ -1,0 +1,108 @@
+# ============================================================================
+# TIER 1: rules/global.yaml (Constitutional Baseline - Applies to ALL Plans)
+# ============================================================================
+schema_version: "1.0"
+tier: "GLOBAL"
+target_id: "GLOBAL"
+inheritance_mode: "MONOTONIC_TIGHTEN_ONLY"
+
+state_capabilities:
+  "/top":
+    allowed_intents:
+      comms.post: ["IMPL", "REVIEW", "QA", "STEWARD", "PM"]
+      item.read: ["IMPL", "REVIEW", "QA", "STEWARD", "PM"]
+  "/top/HorizonWave":
+    allowed_intents:
+      item.edit_spec: ["STEWARD", "PM"]
+      "hsm.transition:SIG_DECOMPOSE": ["STEWARD", "PM"]
+  "/top/Operational":
+    allowed_intents:
+      item.edit_spec: ["IMPL", "STEWARD", "PM"]
+      "hsm.transition:SIG_BLOCK": ["IMPL", "REVIEW", "QA", "STEWARD", "PM"]
+      "hsm.transition:SIG_CANCEL": ["PM"]
+  "/top/Operational/Executing":
+    allowed_intents:
+      test.publish: ["IMPL", "QA"]
+  "/top/Operational/Executing/InProgress":
+    allowed_intents:
+      git.commit: ["IMPL", "PM"]
+      "hsm.transition:SIG_SUBMIT_PR": ["IMPL", "PM"]
+  "/top/Operational/Executing/WaitingReview":
+    allowed_intents:
+      git.commit: []
+      git.merge: ["REVIEW", "PM"]
+      "hsm.transition:SIG_VERIFY": ["REVIEW", "QA", "PM"]
+      "hsm.transition:SIG_REJECT_PR": ["REVIEW", "QA", "STEWARD", "PM"]
+  "/top/Operational/BlockedException":
+    allowed_intents:
+      git.commit: []
+      "hsm.transition:SIG_UNBLOCK": ["STEWARD", "PM"]
+  "/top/VerifiedDone":
+    allowed_intents:
+      git.commit: []
+      "hsm.transition:SIG_REOPEN": ["STEWARD", "PM"]
+
+guards:
+  min_test_coverage_pct: 70
+  min_pr_approvals: 1
+  max_open_blockers: 0
+  max_token_burn: 50000
+  required_predicates:
+    - "require_clean_worktree"
+    - "require_neo4j_lineage"
+---
+# ============================================================================
+# TIER 2: rules/levels/LVL-2.yaml (Active Stage 2 Tightening)
+# ============================================================================
+schema_version: "1.0"
+tier: "LEVEL"
+target_id: "LVL-2"
+extends: "rules/global.yaml"
+
+state_capabilities:
+  "/top/Operational/Executing/InProgress":
+    allowed_intents:
+      # TIGHTENED ROLE WHITELIST: PM no longer commits directly in Stage 2; only IMPL
+      git.commit: ["IMPL"]
+      "hsm.transition:SIG_SUBMIT_PR": ["IMPL"]
+  "/top/Operational/Executing/WaitingReview":
+    allowed_intents:
+      # TIGHTENED ROLE WHITELIST: Only REVIEW or QA can verify in Stage 2
+      "hsm.transition:SIG_VERIFY": ["REVIEW", "QA"]
+
+guards:
+  min_test_coverage_pct: 85       # TIGHTENED: 70% -> 85%
+  min_pr_approvals: 1             # UNCHANGED: 1
+  max_open_blockers: 0            # UNCHANGED: 0
+  max_token_burn: 40000           # TIGHTENED: 50,000 -> 40,000
+  required_predicates:
+    - "require_clean_worktree"
+    - "require_neo4j_lineage"
+    - "require_ci_green"          # ADDED PREDICATE
+    - "require_reviewer_quorum"   # ADDED PREDICATE
+---
+# ============================================================================
+# TIER 3: rules/items/L2.2.yaml (Item-Specific Tightening for HSM Engine Item)
+# ============================================================================
+schema_version: "1.0"
+tier: "ITEM"
+target_id: "L2.2"
+extends: "rules/levels/LVL-2.yaml"
+
+state_capabilities:
+  "/top/Operational/Executing/WaitingReview":
+    allowed_intents:
+      # TIGHTENED ROLE WHITELIST: Strictly requires @reviewer-02 [REVIEW] to verify L2.2
+      "hsm.transition:SIG_VERIFY": ["REVIEW"]
+
+guards:
+  min_test_coverage_pct: 90       # TIGHTENED: 85% -> 90%
+  min_pr_approvals: 2             # TIGHTENED: 1 -> 2
+  max_open_blockers: 0
+  max_token_burn: 35000           # TIGHTENED: 40,000 -> 35,000
+  required_predicates:
+    - "require_clean_worktree"
+    - "require_neo4j_lineage"
+    - "require_ci_green"
+    - "require_reviewer_quorum"
+    - "require_qm_ast_lint"       # ADDED PREDICATE: .qm XML & LCA validation pass

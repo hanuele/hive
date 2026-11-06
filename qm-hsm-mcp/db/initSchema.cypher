@@ -1,0 +1,9 @@
+// SPEC-003 §2.1: Mandatory Neo4j schema initialization. Run once at server startup.
+CREATE CONSTRAINT plan_id_unique IF NOT EXISTS FOR (p:Plan) REQUIRE p.id IS UNIQUE;
+CREATE CONSTRAINT level_id_unique IF NOT EXISTS FOR (l:Level) REQUIRE l.id IS UNIQUE;
+CREATE CONSTRAINT gate_id_unique IF NOT EXISTS FOR (g:StageGate) REQUIRE g.id IS UNIQUE;
+CREATE CONSTRAINT item_id_unique IF NOT EXISTS FOR (i:PlanItem) REQUIRE i.id IS UNIQUE;
+CREATE CONSTRAINT task_id_unique IF NOT EXISTS FOR (t:Task) REQUIRE t.id IS UNIQUE;
+CREATE CONSTRAINT session_id_unique IF NOT EXISTS FOR (s:AgentSession) REQUIRE s.id IS UNIQUE;
+CREATE CONSTRAINT event_id_unique IF NOT EXISTS FOR (e:TemporalEvent) REQUIRE e.id IS UNIQUE;
+CREATE CONSTRAINT msg_id_unique IF NOT EXISTS FOR (m:CommsMessage) REQUIRE m.id IS UNIQUE;

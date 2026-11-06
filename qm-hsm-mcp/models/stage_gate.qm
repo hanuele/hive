@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model version="6.1.1" framework="qpcpp">
+ <documentation>PRINCE2 StageGate Active Object Statechart (Steward Audit &amp; Rolling Wave Horizon Controller)</documentation>
+ <package name="Plans" stereotype="0x02">
+  <class name="StageGateAo" superclass="qpcpp::QActive">
+   <statechart properties="0x01">
+    <initial target="../0/0" target_path="/top/GateGovernance/Locked">
+     <action>init_stage_gate_monitors();</action>
+    </initial>
+
+    <!-- Child 0 of /top: GateGovernance (Composite Superstate for Active Gate Lifecycle) -->
+    <state name="GateGovernance">
+     <entry>subscribe_upstream_stage_signals();</entry>
+     <exit>archive_gate_telemetry();</exit>
+
+     <!-- Behavioral Inheritance (Q_SUPER): Catches tolerance breaches from Locked, Auditing, or ReadyForSignOff -->
+     <tran trig="SIG_TOLERANCE_BREACH" target="3" target_path="/top/GateGovernance/ExceptionEscalated">
+      <guard>G_TOLERANCE_EXCEEDED</guard>
+      <action>steward.open_exception_report("ESC-STAGE");</action>
+     </tran>
+
+     <!-- Child 0 of GateGovernance: Locked -->
+     <state name="Locked">
+      <entry>lock_downstream_wave_decomposition();</entry>
+      <exit>prepare_steward_audit_context();</exit>
+      <tran trig="SIG_REQUEST_AUDIT" target="../1" target_path="/top/GateGovernance/Auditing">
+       <guard>G_ALL_STAGE_ITEMS_VERIFIED</guard>
+       <action>steward.run_stage_boundary_audit();</action>
+      </tran>
+     </state>
+
+     <!-- Child 1 of GateGovernance: Auditing -->
+     <state name="Auditing">
+      <entry>freeze_stage_artifacts();</entry>
+      <exit>publish_steward_audit_digest();</exit>
+      <tran trig="SIG_AUDIT_PASS" target="../2" target_path="/top/GateGovernance/ReadyForSignOff">
+       <guard>G_WITHIN_STAGE_TOLERANCES</guard>
+       <action>comms.notify_pm_gate_ready();</action>
+      </tran>
+      <tran trig="SIG_AUDIT_FAIL" target="../3" target_path="/top/GateGovernance/ExceptionEscalated">
+       <guard>G_ALWAYS</guard>
+       <action>steward.open_exception_report("ESC-AUDIT-FAIL");</action>
+      </tran>
+     </state>
+
+     <!-- Child 2 of GateGovernance: ReadyForSignOff -->
+     <state name="ReadyForSignOff">
+      <entry>enable_pm_gate_signoff_capability();</entry>
+      <exit>seal_stage_audit_bundle();</exit>
+      <tran trig="SIG_PM_SIGNOFF" target="../../1" target_path="/top/SignedOff">
+       <guard>G_PM_OR_BOARD_ROLE</guard>
+       <action>wave.advance_rolling_horizon();</action>
+      </tran>
+      <tran trig="SIG_REVOKE_READY" target="../0" target_path="/top/GateGovernance/Locked">
+       <guard>G_ALWAYS</guard>
+       <action>steward.flag_regression();</action>
+      </tran>
+     </state>
+
+     <!-- Child 3 of GateGovernance: ExceptionEscalated (PRINCE2 Management by Exception) -->
+     <state name="ExceptionEscalated">
+      <entry>halt_stage_progression(); alert_pm_escalation_channel();</entry>
+      <exit>log_exception_resolution();</exit>
+      <tran trig="SIG_APPROVE_EXCEPTION_PLAN" target="../1" target_path="/top/GateGovernance/Auditing">
+       <guard>G_PM_EXCEPTION_APPROVED</guard>
+       <action>steward.apply_exception_plan_bounds();</action>
+      </tran>
+     </state>
+    </state>
+
+    <!-- Child 1 of /top: SignedOff (Terminal Stage Boundary Passed State) -->
+    <state name="SignedOff">
+     <entry>mark_upstream_level_completed(); activate_next_level(); unlock_lookahead_wave();</entry>
+     <exit>reopen_stage_boundary();</exit>
+    </state>
+   </statechart>
+  </class>
+ </package>
+</model>

@@ -1,0 +1,523 @@
+import http from "node:http";
+import fs from "node:fs";
+import path from "node:path";
+import readline from "node:readline";
+import { fileURLToPath } from "node:url";
+
+import { parseQmXmlToAst, QmModelAst } from "../hsm/qmXmlParser";
+import { executeLcaTransition } from "../hsm/lcaEngine";
+import { compileMonotonicYamlChain, CompiledEffectiveRuleset } from "../rules/yamlLatticeCompiler";
+import {
+  appendConservedTemporalMutation,
+  GraphTransactionRunner,
+  RecordedTemporalEvent,
+  verifyTemporalLineageIntegrity,
+} from "../graph/lineageWriter";
+import { renderVirtualMarkdownProjection, GraphPlanProjectionInput } from "../graph/mdProjector";
+import { InMemoryNeo4jTx } from "../graph/inMemoryTx";
+import {
+  dispatchItemSignalTransactional,
+  evaluateMayGatekeeper,
+  LiveItemContext,
+} from "./orchestrator";
+import {
+  canDecomposeWaveItem,
+  evaluateStageBoundaryAudit,
+  LevelToleranceSnapshot,
+  StageGateSnapshot,
+} from "../steward/stewardAuditEngine";
+
+export interface OrchestratorDeps {
+  tx: GraphTransactionRunner;
+  planAst: QmModelAst;
+  gateAst: QmModelAst;
+  rules: CompiledEffectiveRuleset;
+  getItemContext: (itemId: string) => Promise<LiveItemContext>;
+  getSessionRoles: (sessionId: string, itemId: string) => Promise<string[]>;
+  getLevel: (levelId: string) => Promise<LevelToleranceSnapshot>;
+  getLevelForItem: (itemId: string) => Promise<LevelToleranceSnapshot>;
+  getItemsOfLevel: (levelId: string) => Promise<Array<{
+    id: string; levelId: string; hsmStatePath: string; testCoveragePct: number; openBlockersCount: number; cleanWorktree: boolean; ciGreen: boolean;
+  }>>;
+  getGate: (gateId: string) => Promise<StageGateSnapshot>;
+  getPlanProjection: (planId: string) => Promise<GraphPlanProjectionInput>;
+  getEvents: (planId: string) => Promise<RecordedTemporalEvent[]>;
+}
+
+export const TOOL_DEFS = [
+  {
+    name: "may",
+    description: "Pre-flight 3-gate capability check (QM HSM state x session roles x monotonic YAML guards). Read-only.",
+    inputSchema: {
+      type: "object",
+      required: ["sessionId", "itemId", "intent"],
+      properties: {
+        sessionId: { type: "string" },
+        itemId: { type: "string" },
+        intent: { type: "string" },
+      },
+    },
+  },
+  {
+    name: "hsm.dispatch",
+    description: "Dispatch a SIG_* signal to a PlanItem/StageGate active object; may()-gated, LCA EXIT/ACTION/ENTRY, ACID lineage append.",
+    inputSchema: {
+      type: "object",
+      required: ["sessionId", "itemId", "signal"],
+      properties: {
+        sessionId: { type: "string" },
+        itemId: { type: "string" },
+        signal: { type: "string" },
+      },
+    },
+  },
+  {
+    name: "plan.decompose_wave",
+    description: "Rolling-wave decomposition of a HorizonWave item (rejects FUZZY_LOCKED levels).",
+    inputSchema: {
+      type: "object",
+      required: ["sessionId", "itemId"],
+      properties: { sessionId: { type: "string" }, itemId: { type: "string" } },
+    },
+  },
+  {
+    name: "task.sync_state",
+    description: "Update a Kanban task state on an item (bubbles completion upstream).",
+    inputSchema: {
+      type: "object",
+      required: ["sessionId", "itemId", "taskId", "kanbanState"],
+      properties: {
+        sessionId: { type: "string" },
+        itemId: { type: "string" },
+        taskId: { type: "string" },
+        kanbanState: { type: "string", enum: ["TODO", "IN_PROGRESS", "REVIEW", "DONE", "BLOCKED"] },
+      },
+    },
+  },
+  {
+    name: "comms.post",
+    description: "Post a state-stamped message on the item comms channel; optionally attaches a SIG_* signal.",
+    inputSchema: {
+      type: "object",
+      required: ["sessionId", "itemId", "body"],
+      properties: {
+        sessionId: { type: "string" },
+        itemId: { type: "string" },
+        body: { type: "string" },
+        signal: { type: "string" },
+      },
+    },
+  },
+  {
+    name: "rules.compile_check",
+    description: "Return the compiled monotonic effective ruleset for an item. Read-only.",
+    inputSchema: {
+      type: "object",
+      required: ["itemId"],
+      properties: { itemId: { type: "string" } },
+    },
+  },
+  {
+    name: "steward.audit_gate",
+    description: "PRINCE2 stage-boundary tolerance audit for a StageGate (time/token/scope/quality).",
+    inputSchema: {
+      type: "object",
+      required: ["gateId", "levelId"],
+      properties: { gateId: { type: "string" }, levelId: { type: "string" } },
+    },
+  },
+  {
+    name: "md.project",
+    description: "Render a read-only virtual Markdown projection of a plan from the graph (I-MD-PROJECTION).",
+    inputSchema: {
+      type: "object",
+      required: ["planId"],
+      properties: { planId: { type: "string" } },
+    },
+  },
+  {
+    name: "lineage.verify",
+    description: "Verify the SHA-256 hash chain of a plan's TemporalEvent lineage.",
+    inputSchema: {
+      type: "object",
+      required: ["planId"],
+      properties: { planId: { type: "string" } },
+    },
+  },
+] as const;
+
+async function sessionContext(
+  deps: OrchestratorDeps,
+  sessionId: string,
+  itemId: string
+): Promise<{ sessionId: string; assignedRoles: string[] }> {
+  const assignedRoles = await deps.getSessionRoles(sessionId, itemId);
+  return { sessionId, assignedRoles };
+}
+
+export async function handleToolCall(
+  deps: OrchestratorDeps,
+  name: string,
+  args: Record<string, any>
+): Promise<any> {
+  switch (name) {
+    case "may": {
+      const { sessionId, itemId, intent } = args;
+      const item = await deps.getItemContext(itemId);
+      const session = await sessionContext(deps, sessionId, itemId);
+      return evaluateMayGatekeeper(deps.planAst, deps.rules, session, item, intent);
+    }
+    case "hsm.dispatch": {
+      const { sessionId, itemId, signal } = args;
+      const item = await deps.getItemContext(itemId);
+      const session = await sessionContext(deps, sessionId, itemId);
+      return dispatchItemSignalTransactional(deps.tx, deps.planAst, deps.rules, session, item, signal);
+    }
+    case "plan.decompose_wave": {
+      const { sessionId, itemId } = args;
+      const item = await deps.getItemContext(itemId);
+      const level = await deps.getLevelForItem(itemId);
+      const waveCheck = canDecomposeWaveItem(level, {
+        id: item.itemId,
+        levelId: item.levelId,
+        hsmStatePath: item.hsmStatePath,
+        testCoveragePct: item.testCoveragePct,
+        openBlockersCount: item.openBlockersCount,
+        cleanWorktree: item.cleanWorktree,
+        ciGreen: item.ciGreen,
+      });
+      if (!waveCheck.allowed) {
+        throw new Error(`MCP_ERR_WAVE_LOCKED: ${waveCheck.reason}`);
+      }
+      const session = await sessionContext(deps, sessionId, itemId);
+      const mayDecision = evaluateMayGatekeeper(
+        deps.planAst, deps.rules, session, item, "hsm.transition:SIG_DECOMPOSE"
+      );
+      if (!mayDecision.allow) {
+        throw new Error(`MCP_ERR_MAY_DENIED: ${mayDecision.denyReason}`);
+      }
+      const lcaResult = executeLcaTransition(deps.planAst, item.hsmStatePath, "SIG_DECOMPOSE");
+      if (!lcaResult.handled || !lcaResult.lcaStatePath) {
+        throw new Error("MCP_ERR_UNHANDLED_SIGNAL: SIG_DECOMPOSE not handled in current state");
+      }
+      const recordedEvent = await appendConservedTemporalMutation(deps.tx, {
+        planId: item.planId,
+        sessionId,
+        targetId: itemId,
+        targetLabel: "PlanItem",
+        mcpVerb: "plan.decompose_wave",
+        signal: "SIG_DECOMPOSE",
+        fromState: lcaResult.fromStatePath,
+        toState: lcaResult.toStatePath,
+        lcaState: lcaResult.lcaStatePath,
+        entryExitTrace: lcaResult.executionTrace,
+      });
+      return { mayDecision, recordedEvent };
+    }
+    case "task.sync_state": {
+      const { sessionId, itemId, taskId, kanbanState } = args;
+      const item = await deps.getItemContext(itemId);
+      const session = await sessionContext(deps, sessionId, itemId);
+      const mayDecision = evaluateMayGatekeeper(deps.planAst, deps.rules, session, item, "task.mutate");
+      if (!mayDecision.allow) {
+        throw new Error(`MCP_ERR_MAY_DENIED: ${mayDecision.denyReason}`);
+      }
+      const recordedEvent = await appendConservedTemporalMutation(deps.tx, {
+        planId: item.planId,
+        sessionId,
+        targetId: itemId,
+        targetLabel: "PlanItem",
+        mcpVerb: "task.sync_state",
+        signal: `TASK_${String(kanbanState).toUpperCase()}`,
+        fromState: item.hsmStatePath,
+        toState: item.hsmStatePath,
+        lcaState: item.hsmStatePath,
+        entryExitTrace: [`TASK(${taskId}: ${kanbanState})`],
+      });
+      return { mayDecision, recordedEvent };
+    }
+    case "comms.post": {
+      const { sessionId, itemId, body, signal } = args;
+      const item = await deps.getItemContext(itemId);
+      const session = await sessionContext(deps, sessionId, itemId);
+      const mayDecision = evaluateMayGatekeeper(deps.planAst, deps.rules, session, item, "comms.post");
+      if (!mayDecision.allow) {
+        throw new Error(`MCP_ERR_MAY_DENIED: ${mayDecision.denyReason}`);
+      }
+      const recordedEvent = await appendConservedTemporalMutation(deps.tx, {
+        planId: item.planId,
+        sessionId,
+        targetId: itemId,
+        targetLabel: "PlanItem",
+        mcpVerb: "comms.post",
+        signal: signal ?? "COMMS_POST",
+        fromState: item.hsmStatePath,
+        toState: item.hsmStatePath,
+        lcaState: item.hsmStatePath,
+        entryExitTrace: [`COMMS("${String(body).slice(0, 80)}")`],
+      });
+      return { mayDecision, recordedEvent };
+    }
+    case "rules.compile_check": {
+      return {
+        ...deps.rules,
+        required_predicates: [...deps.rules.required_predicates],
+      };
+    }
+    case "steward.audit_gate": {
+      const { gateId, levelId } = args;
+      const gate = await deps.getGate(gateId);
+      const level = await deps.getLevel(levelId);
+      const items = await deps.getItemsOfLevel(levelId);
+      return evaluateStageBoundaryAudit(level, items, gate);
+    }
+    case "md.project": {
+      const { planId } = args;
+      return renderVirtualMarkdownProjection(await deps.getPlanProjection(planId));
+    }
+    case "lineage.verify": {
+      const { planId } = args;
+      return verifyTemporalLineageIntegrity(await deps.getEvents(planId));
+    }
+    default:
+      throw new Error(`MCP_ERR_UNKNOWN_TOOL: '${name}'`);
+  }
+}
+
+function readBody(req: http.IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let data = "";
+    req.on("data", (chunk) => (data += chunk));
+    req.on("end", () => resolve(data));
+    req.on("error", reject);
+  });
+}
+
+export interface HttpGatekeeper {
+  server: http.Server;
+  host: string;
+  port: number;
+  listen: () => Promise<number>;
+  close: () => Promise<void>;
+}
+
+/**
+ * Transport B: loopback-only HTTP JSON endpoint on 127.0.0.1 (default port 4110).
+ * `POST /mcp/may` returns the raw MayEvaluationOutput (top-level `allow`) so the
+ * `.git/hooks/pre-commit` hook can gate commits with `jq -r '.allow'`.
+ */
+export function createHttpGatekeeper(
+  deps: OrchestratorDeps,
+  opts: { host?: string; port?: number } = {}
+): HttpGatekeeper {
+  const host = opts.host ?? "127.0.0.1";
+  const requestedPort = opts.port ?? 4110;
+
+  const server = http.createServer(async (req, res) => {
+    const send = (status: number, payload: unknown) => {
+      res.writeHead(status, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(payload));
+    };
+    try {
+      const url = new URL(req.url ?? "/", `http://${host}:${requestedPort}`);
+      if (req.method === "GET" && (url.pathname === "/health" || url.pathname === "/mcp/health")) {
+        send(200, { ok: true, service: "qm-hsm-mcp" });
+        return;
+      }
+      if (req.method === "POST" && url.pathname.startsWith("/mcp/")) {
+        const tool = decodeURIComponent(url.pathname.slice("/mcp/".length));
+        const raw = await readBody(req);
+        const body = raw ? JSON.parse(raw) : {};
+        const args = body?.params ?? body?.arguments ?? body ?? {};
+        const result = await handleToolCall(deps, tool, args);
+        send(200, tool === "may" ? result : { ok: true, tool, result });
+        return;
+      }
+      send(404, { ok: false, error: "Not found" });
+    } catch (err) {
+      send(400, { ok: false, error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  return {
+    server,
+    host,
+    port: requestedPort,
+    listen: () =>
+      new Promise((resolve) => {
+        server.listen(requestedPort, host, () => {
+          const addr = server.address();
+          resolve(typeof addr === "object" && addr ? addr.port : requestedPort);
+        });
+      }),
+    close: () =>
+      new Promise((resolve) => server.close(() => resolve())),
+  };
+}
+
+/**
+ * Transport A: minimal stdio JSON-RPC 2.0 loop speaking MCP `initialize`,
+ * `tools/list`, and `tools/call` (one JSON message per line).
+ */
+export function startStdioTransport(deps: OrchestratorDeps): void {
+  const rl = readline.createInterface({ input: process.stdin });
+  rl.on("line", (line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    let msg: any;
+    try {
+      msg = JSON.parse(trimmed);
+    } catch {
+      return;
+    }
+    const hasId = msg.id !== undefined && msg.id !== null;
+    const respond = (payload: Record<string, unknown>) => {
+      if (hasId) {
+        process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: msg.id, ...payload }) + "\n");
+      }
+    };
+    void (async () => {
+      switch (msg.method) {
+        case "initialize":
+          respond({
+            result: {
+              protocolVersion: "2024-11-05",
+              capabilities: { tools: {} },
+              serverInfo: { name: "qm-hsm-mcp", version: "0.1.0" },
+            },
+          });
+          break;
+        case "ping":
+          respond({ result: {} });
+          break;
+        case "tools/list":
+          respond({ result: { tools: TOOL_DEFS } });
+          break;
+        case "tools/call": {
+          const name = msg.params?.name;
+          const args = msg.params?.arguments ?? {};
+          try {
+            const result = await handleToolCall(deps, name, args);
+            respond({
+              result: {
+                content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+                isError: false,
+              },
+            });
+          } catch (err) {
+            respond({
+              result: {
+                content: [{ type: "text", text: err instanceof Error ? err.message : String(err) }],
+                isError: true,
+              },
+            });
+          }
+          break;
+        }
+        default:
+          respond({ error: { code: -32601, message: `Method not found: ${msg.method}` } });
+      }
+    })().catch((err) => {
+      respond({ error: { code: -32603, message: err instanceof Error ? err.message : String(err) } });
+    });
+  });
+}
+
+export function loadFileDeps(projectRoot: string): {
+  planAst: QmModelAst;
+  gateAst: QmModelAst;
+  rules: CompiledEffectiveRuleset;
+} {
+  const planAst = parseQmXmlToAst(
+    fs.readFileSync(path.join(projectRoot, "models/plan_item.qm"), "utf-8")
+  );
+  const gateAst = parseQmXmlToAst(
+    fs.readFileSync(path.join(projectRoot, "models/stage_gate.qm"), "utf-8")
+  );
+  const rules = compileMonotonicYamlChain(
+    fs
+      .readFileSync(path.join(projectRoot, "rules/MONOTONIC_YAML_RULES_BUNDLE.yaml"), "utf-8")
+      .split(/^---$/m)
+  );
+  return { planAst, gateAst, rules };
+}
+
+async function main(): Promise<void> {
+  const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+  const { planAst, gateAst, rules } = loadFileDeps(projectRoot);
+
+  // Demo mode: in-memory lineage. With a live Neo4j, inject a runner backed by
+  // neo4j-driver v5: `session.executeWrite(tx => ...)` satisfies GraphTransactionRunner.
+  const tx = new InMemoryNeo4jTx();
+  const baseItem: LiveItemContext = {
+    planId: "PLAN-CORE-2026",
+    itemId: "L2.2",
+    levelId: "LVL-2",
+    hsmStatePath: "/top/Operational/Executing/InProgress",
+    testCoveragePct: 92,
+    openBlockersCount: 0,
+    prApprovalsCount: 2,
+    cleanWorktree: true,
+    ciGreen: true,
+    qmAstLintPass: true,
+  };
+  const demoLevel: LevelToleranceSnapshot = {
+    id: "LVL-2",
+    index: 2,
+    horizonMode: "ACTIVE",
+    plannedDays: 10,
+    elapsedDays: 1,
+    timeToleranceDays: 2,
+    tokenBudgetMax: 100000,
+    tokenBurnCurrent: 1000,
+    tokenTolerancePct: 0.1,
+    minStageCoveragePct: 85,
+  };
+  const deps: OrchestratorDeps = {
+    tx,
+    planAst,
+    gateAst,
+    rules,
+    getItemContext: async (itemId) => ({
+      ...baseItem,
+      itemId,
+      hsmStatePath: tx.itemStates.get(itemId) ?? baseItem.hsmStatePath,
+    }),
+    getSessionRoles: async () => ["IMPL"],
+    getLevel: async () => demoLevel,
+    getLevelForItem: async () => demoLevel,
+    getItemsOfLevel: async () => [],
+    getGate: async () => ({
+      id: "G2",
+      fromLevelId: "LVL-2",
+      toLevelId: "LVL-3",
+      hsmStatePath: "/top/GateGovernance/Locked",
+      exceptionPlanApproved: false,
+    }),
+    getPlanProjection: async (planId) => ({
+      planId,
+      title: "Local QM HSM & MCP Orchestration Plan",
+      headEventHash: tx.headHash,
+      generatedAtIso: new Date().toISOString(),
+      levels: [],
+    }),
+    getEvents: async () => tx.events,
+  };
+
+  const gatekeeper = createHttpGatekeeper(deps, {
+    host: "127.0.0.1",
+    port: Number(process.env.MCP_PORT ?? 4110),
+  });
+  const port = await gatekeeper.listen();
+  if (process.env.MCP_STDIO === "1") {
+    startStdioTransport(deps);
+  }
+  console.error(`[qm-hsm-mcp] HTTP gatekeeper listening on http://127.0.0.1:${port}/mcp/* (loopback only)`);
+}
+
+const invokedDirectly = process.argv[1]
+  ? path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  : false;
+if (invokedDirectly) {
+  void main();
+}
