@@ -50,9 +50,15 @@ export interface RecordedTemporalEvent {
 /**
  * Abstraction over Neo4j ManagedTransaction (compatible with neo4j-driver v5
  * and in-memory test doubles for Vitest).
+ *
+ * `withLock` (optional): serializes a whole multi-query mutation per key.
+ * Real Neo4j gets this from `SET p._writeLock = ...` held until commit;
+ * in-memory runners must emulate it with a mutex so concurrent writers
+ * cannot interleave between the HEAD_EVENT read and the append (E7/C1).
  */
 export interface GraphTransactionRunner {
   run(cypher: string, params: Record<string, any>): Promise<{ records: any[] }>;
+  withLock?<T>(key: string, fn: () => Promise<T>): Promise<T>;
 }
 
 /** RFC 9562 UUIDv7 (time-sortable): 48-bit ms timestamp + ver/variant + 62 random bits. */
@@ -127,6 +133,16 @@ function normalizeEvent(e: any): RecordedTemporalEvent {
  * (planId, mcpVerb, idempotencyKey) already exists, it is returned unchanged.
  */
 export async function appendConservedTemporalMutation(
+  tx: GraphTransactionRunner,
+  input: TemporalMutationInput
+): Promise<RecordedTemporalEvent> {
+  // The whole read-head -> dedup -> mutate-append sequence runs under the
+  // plan lock: Cypher `SET p._writeLock` on real Neo4j, withLock() on mocks.
+  const runAll = () => appendLocked(tx, input);
+  return tx.withLock ? tx.withLock(`plan:${input.planId}`, runAll) : runAll();
+}
+
+async function appendLocked(
   tx: GraphTransactionRunner,
   input: TemporalMutationInput
 ): Promise<RecordedTemporalEvent> {

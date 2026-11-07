@@ -16,6 +16,25 @@ export class InMemoryNeo4jTx implements GraphTransactionRunner {
   public itemStates = new Map<string, string>();
 
   /**
+   * E7/C1: emulates the Neo4j `SET p._writeLock` lock — a per-key async mutex
+   * held across ALL queries of one mutation, so concurrent writers serialize
+   * and the [:PREV_EVENT] chain can never fork.
+   */
+  private lockTails = new Map<string, Promise<unknown>>();
+
+  async withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    const tail = this.lockTails.get(key) ?? Promise.resolve();
+    const run = tail.then(fn, fn);
+    const tracked = run.catch(() => {});
+    this.lockTails.set(key, tracked);
+    try {
+      return await run;
+    } finally {
+      if (this.lockTails.get(key) === tracked) this.lockTails.delete(key);
+    }
+  }
+
+  /**
    * E4 (AMEND-09.4): crash recovery — rebuild memory (itemStates + headHash)
    * from the conserved event chain. Memory is only ever mutated in the CREATE
    * branch of run() (i.e., at commit), never before.

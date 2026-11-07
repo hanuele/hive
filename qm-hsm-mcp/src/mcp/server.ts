@@ -590,6 +590,44 @@ export function startStdioTransport(deps: OrchestratorDeps): void {
   });
 }
 
+/**
+ * E4/E6 (AMEND-09.4/09.6): one steward-pulse tick — verify the lineage chain and
+ * reconcile in-memory state from it. Runs on every pulse, not only at stage gates.
+ */
+export async function runStewardPulseTick(
+  deps: OrchestratorDeps,
+  planId: string
+): Promise<{ valid: boolean; eventsCount: number; mismatches: string[]; rehydrated: boolean }> {
+  return (await handleToolCall(deps, "lineage.reconcile", { planId })) as {
+    valid: boolean; eventsCount: number; mismatches: string[]; rehydrated: boolean;
+  };
+}
+
+/**
+ * Starts the steward-pulse loop (SPEC-008: 900s flat beat by default).
+ * Returns a stop function. A broken chain is logged loudly — in production the
+ * steward dispatches SIG_TOLERANCE_BREACH to the current StageGate.
+ */
+export function startStewardPulse(
+  deps: OrchestratorDeps,
+  planId: string,
+  intervalMs: number,
+  onTick?: (r: { valid: boolean; eventsCount: number; mismatches: string[]; rehydrated: boolean }) => void
+): () => void {
+  const timer = setInterval(() => {
+    runStewardPulseTick(deps, planId)
+      .then((r) => {
+        if (!r.valid) {
+          console.error(`[qm-hsm-mcp] PULSE: lineage chain BROKEN for ${planId} — escalate SIG_TOLERANCE_BREACH`);
+        }
+        onTick?.(r);
+      })
+      .catch((err) => console.error("[qm-hsm-mcp] PULSE reconcile failed:", err));
+  }, intervalMs);
+  timer.unref?.();
+  return () => clearInterval(timer);
+}
+
 export function loadFileDeps(projectRoot: string): {
   planAst: QmModelAst;
   gateAst: QmModelAst;
@@ -685,6 +723,14 @@ async function main(): Promise<void> {
     authToken: process.env.MCP_AUTH_TOKEN,
   });
   const port = await gatekeeper.listen();
+
+  // Steward pulse: per-pulse lineage verify + reconcile (E4/E6). 900s default
+  // (SPEC-008 flat beat); STEWARD_PULSE_SECONDS=0 disables.
+  const pulseSeconds = Number(process.env.STEWARD_PULSE_SECONDS ?? 900);
+  if (pulseSeconds > 0) {
+    startStewardPulse(deps, process.env.QM_PLAN_ID ?? "PLAN-CORE-2026", pulseSeconds * 1000);
+    console.error(`[qm-hsm-mcp] steward pulse armed: every ${pulseSeconds}s (lineage.reconcile)`);
+  }
   if (process.env.MCP_STDIO === "1") {
     startStdioTransport(deps);
   }

@@ -50,7 +50,13 @@ npm run sim       # regenerate simulator/index.html from models/ + rules/
 # plus a "Concepts explained" tab
 MCP_PORT=4110 bun src/mcp/server.ts        # loopback HTTP gatekeeper (demo, in-memory lineage)
 MCP_STDIO=1 MCP_PORT=4110 bun src/mcp/server.ts  # + stdio MCP transport
+# MCP_AUTH_TOKEN=<token>  -> all POST /mcp/* require Authorization: Bearer <token>
+# STEWARD_PULSE_SECONDS=900 (default; 0 disables) -> per-pulse lineage.verify + reconcile
+# QM_PLAN_ID=PLAN-CORE-2026 -> plan the steward pulse reconciles
 ```
+
+E7 race test against real Neo4j (skipped unless configured):
+`QM_TEST_NEO4J_URI=bolt://127.0.0.1:7687 npm i -D neo4j-driver && QM_TEST_NEO4J_URI=... npm test`
 
 Tools: `may` (five-valued decision; `ask` posts `SIG_ESCALATE_ASK` once per item|intent and
 hardens to `no` after `ask_ttl_seconds`), `hsm.dispatch`, `plan.decompose_wave`,
