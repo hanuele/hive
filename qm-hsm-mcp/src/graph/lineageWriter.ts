@@ -269,6 +269,22 @@ export async function appendConservedTemporalMutation(
 }
 
 /**
+ * E4 (AMEND-09.4): rebuild in-memory HSM state by replaying the conserved
+ * lineage oldest -> newest. The graph is the source of truth; memory is a cache.
+ */
+export function rehydrateItemStates(
+  eventsOldestFirst: RecordedTemporalEvent[]
+): Map<string, string> {
+  const states = new Map<string, string>();
+  for (const evt of eventsOldestFirst) {
+    if (evt.origin !== "COUNTERFACTUAL" && evt.mcpVerb !== "reconcile") {
+      states.set(evt.targetId, evt.toState);
+    }
+  }
+  return states;
+}
+
+/**
  * Verifies the cryptographic integrity of an ordered array of TemporalEvents
  * (ordered oldest -> newest).
  */

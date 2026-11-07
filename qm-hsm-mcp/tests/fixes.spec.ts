@@ -42,6 +42,8 @@ describe("B3 (AMEND-03.3): Gate A intersects down the state hierarchy — child 
       max_open_blockers: 99,
       max_token_burn: Number.POSITIVE_INFINITY,
       required_predicates: new Set(),
+      telemetry_max_age_seconds: {},
+      ask_ttl_seconds: 900,
       state_capabilities: {
         "/top": { "weird.intent": ["PM"] },
         "/top/Operational": { "weird.intent": ["IMPL", "PM"] }, // child lists MORE roles

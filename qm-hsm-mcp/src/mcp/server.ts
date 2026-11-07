@@ -12,6 +12,7 @@ import {
   appendConservedTemporalMutation,
   GraphTransactionRunner,
   RecordedTemporalEvent,
+  rehydrateItemStates,
   verifyTemporalLineageIntegrity,
 } from "../graph/lineageWriter";
 import { renderVirtualMarkdownProjection, GraphPlanProjectionInput } from "../graph/mdProjector";
@@ -19,7 +20,9 @@ import { InMemoryNeo4jTx } from "../graph/inMemoryTx";
 import {
   dispatchItemSignalTransactional,
   evaluateMayGatekeeper,
+  formatRefusalPrefix,
   LiveItemContext,
+  MayEvaluationOutput,
 } from "./orchestrator";
 import {
   canDecomposeWaveItem,
@@ -34,6 +37,8 @@ export interface OrchestratorDeps {
   gateAst: QmModelAst;
   rules: CompiledEffectiveRuleset;
   qmAstHash?: string; // E6: SHA-256 of the loaded .qm models, chained into every event
+  askRegistry?: Map<string, string>; // E5: "itemId|intent" -> first-ask ISO timestamp
+  getItemStateMap?: () => Map<string, string>; // E4: live in-memory item states for reconcile
   getItemContext: (itemId: string) => Promise<LiveItemContext>;
   getSessionRoles: (sessionId: string, itemId: string) => Promise<string[]>;
   getLevel: (levelId: string) => Promise<LevelToleranceSnapshot>;
@@ -153,7 +158,81 @@ export const TOOL_DEFS = [
       properties: { planId: { type: "string" } },
     },
   },
+  {
+    name: "ruling.record",
+    description: "E5: steward records an /interview ruling as a chained TemporalEvent; later may() calls cite it via rulingId.",
+    inputSchema: {
+      type: "object",
+      required: ["sessionId", "itemId", "intent", "rulingId", "answer"],
+      properties: {
+        sessionId: { type: "string" },
+        itemId: { type: "string" },
+        intent: { type: "string" },
+        rulingId: { type: "string" },
+        answer: { type: "string", enum: ["yes", "no"] },
+      },
+    },
+  },
+  {
+    name: "lineage.reconcile",
+    description: "E4: verify chain integrity and rehydrate in-memory state from the lineage (run on every steward pulse).",
+    inputSchema: {
+      type: "object",
+      required: ["planId"],
+      properties: { planId: { type: "string" } },
+    },
+  },
 ] as const;
+
+/**
+ * E5 (AMEND-09.5): may() with the ask-escalation workflow. On `decision: "ask"`:
+ * post SIG_ESCALATE_ASK on the item channel (idempotent per item|intent) and
+ * register the ask; if the ask TTL expires without a ruling, harden to "no".
+ */
+export async function evaluateMayWithEscalation(
+  deps: OrchestratorDeps,
+  session: { sessionId: string; assignedRoles: string[] },
+  item: LiveItemContext,
+  intent: string
+): Promise<MayEvaluationOutput> {
+  const out = evaluateMayGatekeeper(deps.planAst, deps.rules, session, item, intent);
+  if (out.decision !== "ask") return out;
+
+  const registry = (deps.askRegistry ??= new Map<string, string>());
+  const key = `${item.itemId}|${intent}`;
+  const ttlSec = deps.rules.ask_ttl_seconds;
+  const firstAsk = registry.get(key);
+  if (firstAsk && Date.now() - Date.parse(firstAsk) > ttlSec * 1000) {
+    return {
+      ...out,
+      allow: false,
+      decision: "no",
+      denyReason: formatRefusalPrefix(
+        out.enforcerId,
+        item.rulingId,
+        `Ask TTL expired (${ttlSec}s) for '${intent}' on ${item.itemId} with no ruling recorded; hardened from ask to no.`
+      ),
+    };
+  }
+  if (!firstAsk) {
+    registry.set(key, new Date().toISOString());
+    await appendConservedTemporalMutation(deps.tx, {
+      planId: item.planId,
+      sessionId: session.sessionId,
+      targetId: item.itemId,
+      targetLabel: "PlanItem",
+      mcpVerb: "comms.post",
+      signal: "SIG_ESCALATE_ASK",
+      fromState: item.hsmStatePath,
+      toState: item.hsmStatePath,
+      lcaState: item.hsmStatePath,
+      entryExitTrace: [`ASK(${intent}: unobserved [${out.unobserved.join(", ")}])`],
+      idempotencyKey: `ask:${item.itemId}:${intent}`,
+      qmAstHash: deps.qmAstHash,
+    });
+  }
+  return out;
+}
 
 async function sessionContext(
   deps: OrchestratorDeps,
@@ -174,7 +253,7 @@ export async function handleToolCall(
       const { sessionId, itemId, intent } = args;
       const item = await deps.getItemContext(itemId);
       const session = await sessionContext(deps, sessionId, itemId);
-      return evaluateMayGatekeeper(deps.planAst, deps.rules, session, item, intent);
+      return evaluateMayWithEscalation(deps, session, item, intent);
     }
     case "hsm.dispatch": {
       const { sessionId, itemId, signal } = args;
@@ -296,6 +375,66 @@ export async function handleToolCall(
     case "lineage.verify": {
       const { planId } = args;
       return verifyTemporalLineageIntegrity(await deps.getEvents(planId));
+    }
+    case "ruling.record": {
+      const { sessionId, itemId, intent, rulingId, answer } = args;
+      const item = await deps.getItemContext(itemId);
+      const session = await sessionContext(deps, sessionId, itemId);
+      const mayDecision = evaluateMayGatekeeper(deps.planAst, deps.rules, session, item, "ruling.record");
+      if (!mayDecision.allow) {
+        throw new Error(`MCP_ERR_MAY_DENIED: ${mayDecision.denyReason}`);
+      }
+      const recordedEvent = await appendConservedTemporalMutation(deps.tx, {
+        planId: item.planId,
+        sessionId,
+        targetId: itemId,
+        targetLabel: "PlanItem",
+        mcpVerb: "ruling.record",
+        signal: "SIG_RULING",
+        fromState: item.hsmStatePath,
+        toState: item.hsmStatePath,
+        lcaState: item.hsmStatePath,
+        entryExitTrace: [`RULING(${rulingId} => ${answer} on ${intent})`],
+        idempotencyKey: `ruling:${rulingId}`,
+        qmAstHash: deps.qmAstHash,
+      });
+      return { mayDecision, recordedEvent };
+    }
+    case "lineage.reconcile": {
+      const { planId } = args;
+      const events = await deps.getEvents(planId);
+      const integrity = verifyTemporalLineageIntegrity(events);
+      const rebuilt = rehydrateItemStates(events);
+      const mismatches: string[] = [];
+      if (deps.getItemStateMap) {
+        const live = deps.getItemStateMap();
+        for (const [targetId, state] of rebuilt.entries()) {
+          if (live.get(targetId) !== state) mismatches.push(targetId);
+        }
+        if (mismatches.length > 0) {
+          (deps.tx as unknown as { rehydrate?: () => void }).rehydrate?.();
+          await appendConservedTemporalMutation(deps.tx, {
+            planId,
+            sessionId: "steward-pulse",
+            targetId: planId,
+            targetLabel: "Level",
+            mcpVerb: "reconcile",
+            signal: "SIG_RECONCILE",
+            fromState: "",
+            toState: "",
+            lcaState: "",
+            entryExitTrace: [`RECONCILE(rehydrated: ${mismatches.join(", ")})`],
+            idempotencyKey: `reconcile:${planId}:${events.at(-1)?.eventId ?? "genesis"}`,
+            qmAstHash: deps.qmAstHash,
+          });
+        }
+      }
+      return {
+        valid: integrity.valid,
+        eventsCount: events.length,
+        mismatches,
+        rehydrated: mismatches.length > 0,
+      };
     }
     default:
       throw new Error(`MCP_ERR_UNKNOWN_TOOL: '${name}'`);
@@ -512,6 +651,8 @@ async function main(): Promise<void> {
     gateAst,
     rules,
     qmAstHash,
+    askRegistry: new Map<string, string>(),
+    getItemStateMap: () => tx.itemStates,
     getItemContext: async (itemId) => ({
       ...baseItem,
       itemId,

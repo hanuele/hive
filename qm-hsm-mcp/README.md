@@ -52,8 +52,13 @@ MCP_PORT=4110 bun src/mcp/server.ts        # loopback HTTP gatekeeper (demo, in-
 MCP_STDIO=1 MCP_PORT=4110 bun src/mcp/server.ts  # + stdio MCP transport
 ```
 
-Tools: `may`, `hsm.dispatch`, `plan.decompose_wave`, `task.sync_state`, `comms.post`,
-`rules.compile_check`, `steward.audit_gate`, `md.project`, `lineage.verify`.
+Tools: `may` (five-valued decision; `ask` posts `SIG_ESCALATE_ASK` once per item|intent and
+hardens to `no` after `ask_ttl_seconds`), `hsm.dispatch`, `plan.decompose_wave`,
+`task.sync_state`, `comms.post`, `rules.compile_check`, `steward.audit_gate`, `md.project`,
+`lineage.verify`, `lineage.reconcile` (E4 rehydration check, run per steward pulse),
+`ruling.record` (E5: steward-only, chained `ruling.record` event citable via `rulingId`).
+Gate C telemetry accepts `telemetryObservedAt` per field; stale (per
+`telemetry_max_age_seconds`) counts as unobserved => `ask`.
 
 HTTP: `POST http://127.0.0.1:4110/mcp/<tool>` with `{"params": {...}}`;
 `POST /mcp/may` returns the raw decision (`{"allow": ..., "decision": ...}`) for

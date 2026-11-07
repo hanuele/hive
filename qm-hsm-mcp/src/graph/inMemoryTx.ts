@@ -1,6 +1,7 @@
 import {
   GraphTransactionRunner,
   RecordedTemporalEvent,
+  rehydrateItemStates,
 } from "./lineageWriter";
 
 /**
@@ -13,6 +14,16 @@ export class InMemoryNeo4jTx implements GraphTransactionRunner {
   public headHash: string = "GENESIS_0000000000000000";
   public events: RecordedTemporalEvent[] = [];
   public itemStates = new Map<string, string>();
+
+  /**
+   * E4 (AMEND-09.4): crash recovery — rebuild memory (itemStates + headHash)
+   * from the conserved event chain. Memory is only ever mutated in the CREATE
+   * branch of run() (i.e., at commit), never before.
+   */
+  public rehydrate(): void {
+    this.itemStates = rehydrateItemStates(this.events);
+    this.headHash = this.events.at(-1)?.chainHash ?? "GENESIS_0000000000000000";
+  }
 
   async run(cypher: string, params: Record<string, any>): Promise<{ records: any[] }> {
     // E2: idempotency dedup read — RETURN e (never the CREATE statement)
@@ -56,7 +67,10 @@ export class InMemoryNeo4jTx implements GraphTransactionRunner {
       };
       this.events.push(evt);
       this.headHash = params.chainHash;
-      this.itemStates.set(params.targetId, params.toState);
+      // reconcile events are plan-level bookkeeping, not item state mutations
+      if (params.mcpVerb !== "reconcile") {
+        this.itemStates.set(params.targetId, params.toState);
+      }
       return {
         records: [{ get: () => params.eventId }],
       };

@@ -7,6 +7,17 @@ export class MonotonicityViolationError extends Error {
   }
 }
 
+/** E3 (AMEND-09.3): default per-field staleness bounds (seconds). */
+export const DEFAULT_TELEMETRY_MAX_AGE_SECONDS: Record<string, number> = {
+  cleanWorktree: 300,
+  ciGreen: 300,
+  testCoveragePct: 3600,
+  openBlockersCount: 3600,
+};
+
+/** E5 (AMEND-09.5): default ask TTL before an unanswered ask hardens to "no". */
+export const DEFAULT_ASK_TTL_SECONDS = 900;
+
 export interface YamlRuleTierDescriptor {
   schema_version: string;
   tier: "GLOBAL" | "LEVEL" | "ITEM";
@@ -24,6 +35,8 @@ export interface YamlRuleTierDescriptor {
     max_open_blockers?: number;
     max_token_burn?: number;
     required_predicates?: string[];
+    telemetry_max_age_seconds?: Record<string, number>; // E3: per-field staleness bound
+    ask_ttl_seconds?: number;                          // E5: ask hardening TTL
   };
 }
 
@@ -34,6 +47,8 @@ export interface CompiledEffectiveRuleset {
   max_token_burn: number;
   required_predicates: Set<string>;
   state_capabilities: Record<string, Record<string, string[]>>;
+  telemetry_max_age_seconds: Record<string, number>; // E3
+  ask_ttl_seconds: number;                           // E5
 }
 
 /**
@@ -56,6 +71,11 @@ export function compileMonotonicYamlChain(
     max_token_burn: root.guards.max_token_burn ?? Number.MAX_SAFE_INTEGER,
     required_predicates: new Set(root.guards.required_predicates ?? []),
     state_capabilities: {},
+    telemetry_max_age_seconds: {
+      ...DEFAULT_TELEMETRY_MAX_AGE_SECONDS,
+      ...(root.guards.telemetry_max_age_seconds ?? {}),
+    },
+    ask_ttl_seconds: root.guards.ask_ttl_seconds ?? DEFAULT_ASK_TTL_SECONDS,
   };
 
   // Seed root capabilities
@@ -109,6 +129,29 @@ export function compileMonotonicYamlChain(
       effective.max_token_burn = Math.min(effective.max_token_burn, g.max_token_burn);
     }
 
+    // 2b. E3: staleness bounds tighten only (lower max age = stricter)
+    if (g.telemetry_max_age_seconds) {
+      for (const [field, maxAge] of Object.entries(g.telemetry_max_age_seconds)) {
+        const current = effective.telemetry_max_age_seconds[field] ?? Number.MAX_SAFE_INTEGER;
+        if (maxAge > current) {
+          throw new MonotonicityViolationError(
+            `[${child.tier}:${child.target_id}] Cannot relax telemetry_max_age_seconds['${field}'] from ${current}s up to ${maxAge}s`
+          );
+        }
+        effective.telemetry_max_age_seconds[field] = Math.min(current, maxAge);
+      }
+    }
+
+    // 2c. E5: ask TTL tightens only (shorter TTL = ask hardens sooner = stricter)
+    if (g.ask_ttl_seconds !== undefined) {
+      if (g.ask_ttl_seconds > effective.ask_ttl_seconds) {
+        throw new MonotonicityViolationError(
+          `[${child.tier}:${child.target_id}] Cannot relax ask_ttl_seconds from ${effective.ask_ttl_seconds}s up to ${g.ask_ttl_seconds}s`
+        );
+      }
+      effective.ask_ttl_seconds = Math.min(effective.ask_ttl_seconds, g.ask_ttl_seconds);
+    }
+
     // 3. Required predicates: union only (child cannot drop parent required predicates)
     if (g.required_predicates) {
       const childSet = new Set(g.required_predicates);
@@ -124,21 +167,27 @@ export function compileMonotonicYamlChain(
       }
     }
 
-    // 4. Role capabilities: child may only narrow (subset) parent roles for a given state & intent
+    // 4. Role capabilities: child may only narrow (subset) parent roles for a given state & intent;
+    //    introducing a (state, intent) the parent never defined is a violation (AMEND-08.3)
     for (const [statePath, capObj] of Object.entries(child.state_capabilities ?? {})) {
       effective.state_capabilities[statePath] = effective.state_capabilities[statePath] ?? {};
       for (const [intent, childRoles] of Object.entries(capObj.allowed_intents)) {
         const parentRoles = effective.state_capabilities[statePath][intent];
-        if (parentRoles) {
-          for (const r of childRoles) {
-            if (!parentRoles.includes(r)) {
-              throw new MonotonicityViolationError(
-                `[${child.tier}:${child.target_id}] Cannot grant role '${r}' on (${statePath}, ${intent}) not present in parent whitelist [${parentRoles.join(", ")}]`
-              );
-            }
+        if (!parentRoles) {
+          throw new MonotonicityViolationError(
+            `[${child.tier}:${child.target_id}] Introduces state_capabilities['${statePath}']['${intent}'] not defined in any parent tier`
+          );
+        }
+        for (const r of childRoles) {
+          if (!parentRoles.includes(r)) {
+            throw new MonotonicityViolationError(
+              `[${child.tier}:${child.target_id}] Cannot grant role '${r}' on (${statePath}, ${intent}) not present in parent whitelist [${parentRoles.join(", ")}]`
+            );
           }
         }
-        effective.state_capabilities[statePath][intent] = childRoles;
+        effective.state_capabilities[statePath][intent] = parentRoles.filter((r) =>
+          childRoles.includes(r)
+        );
       }
     }
   }

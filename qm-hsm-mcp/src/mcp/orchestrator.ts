@@ -1,6 +1,9 @@
 import { QmModelAst } from "../hsm/qmXmlParser";
 import { executeLcaTransition, getAncestorChain } from "../hsm/lcaEngine";
-import { CompiledEffectiveRuleset } from "../rules/yamlLatticeCompiler";
+import {
+  CompiledEffectiveRuleset,
+  DEFAULT_TELEMETRY_MAX_AGE_SECONDS,
+} from "../rules/yamlLatticeCompiler";
 import {
   appendConservedTemporalMutation,
   GraphTransactionRunner,
@@ -26,6 +29,12 @@ export interface LiveItemContext {
   qmAstLintPass: boolean | null;
   unobservedFacts?: string[]; // explicit unobserved list (SPEC-009 B2 relevance cap)
   rulingId?: string;          // ruling that authorizes this evaluation, if any
+  // E3 (AMEND-09.3): per-field ISO observation timestamps. When this map is
+  // PRESENT, staleness is enforced per field (missing entry = unobserved);
+  // when ABSENT, telemetry is trusted (legacy mode, pre-E3 callers).
+  telemetryObservedAt?: Partial<
+    Record<"cleanWorktree" | "ciGreen" | "testCoveragePct" | "openBlockersCount", string>
+  >;
 }
 
 export type MayDecisionAnswer = "yes" | "yes_if" | "ask" | "no" | "gap";
@@ -145,11 +154,30 @@ export function evaluateMayGatekeeper(
       `Gate B (Role Mismatch): Session '${session.sessionId}' roles [${session.assignedRoles.join(", ")}] not in allowed [${allowedRoles.join(", ")}].`);
   }
 
-  // Gate C: Monotonic YAML Guard Predicates (nullable telemetry; unobserved => ask)
+  // Gate C: Monotonic YAML Guard Predicates (nullable telemetry; unobserved/stale => ask)
   const relevantUnobserved: string[] = [];
+  const stale: string[] = [];
+  const observedMap = item.telemetryObservedAt;
+  const stalenessEnforced = observedMap !== undefined;
+  const isUnobservedOrStale = (field: string, value: unknown): boolean => {
+    if (value === null || unobservedSet.has(field)) return true;
+    if (stalenessEnforced) {
+      const at = observedMap![field as keyof typeof observedMap];
+      if (at === undefined) return true; // published map but field never observed
+      const maxAgeSec =
+        rules.telemetry_max_age_seconds[field] ??
+        DEFAULT_TELEMETRY_MAX_AGE_SECONDS[field] ??
+        3600;
+      if (Date.now() - Date.parse(at) > maxAgeSec * 1000) {
+        stale.push(field);
+        return true;
+      }
+    }
+    return false;
+  };
 
   if (rules.required_predicates.has("require_clean_worktree")) {
-    if (item.cleanWorktree === null || unobservedSet.has("cleanWorktree")) {
+    if (isUnobservedOrStale("cleanWorktree", item.cleanWorktree)) {
       relevantUnobserved.push("cleanWorktree");
     } else if (!item.cleanWorktree) {
       return finish("no", allowedRoles, definingStatePath, [],
@@ -161,23 +189,23 @@ export function evaluateMayGatekeeper(
     intent !== "hsm.transition:SIG_UNBLOCK" &&
     intent !== "hsm.transition:SIG_BLOCK"
   ) {
-    if (item.openBlockersCount === null || unobservedSet.has("openBlockersCount")) {
+    if (isUnobservedOrStale("openBlockersCount", item.openBlockersCount)) {
       relevantUnobserved.push("openBlockersCount");
-    } else if (item.openBlockersCount > rules.max_open_blockers) {
+    } else if (item.openBlockersCount! > rules.max_open_blockers) {
       return finish("no", allowedRoles, definingStatePath, [],
         `Gate C (Monotonic YAML): openBlockersCount (${item.openBlockersCount}) > max_open_blockers (${rules.max_open_blockers}).`);
     }
   }
 
   if (intent === "hsm.transition:SIG_VERIFY" || intent === "git.merge") {
-    if (item.testCoveragePct === null || unobservedSet.has("testCoveragePct")) {
+    if (isUnobservedOrStale("testCoveragePct", item.testCoveragePct)) {
       relevantUnobserved.push("testCoveragePct");
-    } else if (item.testCoveragePct < rules.min_test_coverage_pct) {
+    } else if (item.testCoveragePct! < rules.min_test_coverage_pct) {
       return finish("no", allowedRoles, definingStatePath, [],
         `Gate C (Monotonic YAML): testCoveragePct (${item.testCoveragePct}%) < tightened min_test_coverage_pct (${rules.min_test_coverage_pct}%).`);
     }
     if (rules.required_predicates.has("require_ci_green")) {
-      if (item.ciGreen === null || unobservedSet.has("ciGreen")) {
+      if (isUnobservedOrStale("ciGreen", item.ciGreen)) {
         relevantUnobserved.push("ciGreen");
       } else if (!item.ciGreen) {
         return finish("no", allowedRoles, definingStatePath, [],
@@ -186,10 +214,10 @@ export function evaluateMayGatekeeper(
     }
   }
 
-  // SPEC-009 B2 relevance cap: unobserved facts => "ask", NEVER "no"
+  // SPEC-009 B2 relevance cap: unobserved/stale facts => "ask", NEVER "no"
   if (relevantUnobserved.length > 0) {
     return finish("ask", allowedRoles, definingStatePath, relevantUnobserved,
-      `Epistemic cap (ASK): required telemetry [${relevantUnobserved.join(", ")}] is UNOBSERVED on ${item.itemId}; escalate instead of denying.`);
+      `Epistemic cap (ASK): required telemetry [${relevantUnobserved.join(", ")}] is UNOBSERVED${stale.length > 0 ? ` or STALE [${stale.join(", ")}]` : ""} on ${item.itemId}; escalate instead of denying.`);
   }
 
   return finish("yes", allowedRoles, definingStatePath, []);
