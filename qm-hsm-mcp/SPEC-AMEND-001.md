@@ -2,7 +2,7 @@
 
 **Document ID:** `SPEC-AMEND-001`
 **Applies to:** `SPEC-001` … `SPEC-009` and the *Comprehensive Specification Audit and Review* PDF (the nine uploaded spec documents).
-**Status:** Draft for architect review.
+**Status:** Draft for architect review (rev 2 — adds AMEND-09 operational hardening, E1–E7).
 **How to apply:** Each `AMEND-xx` section replaces the cited section of the base spec verbatim. Sections not cited are unchanged. SPEC-008/SPEC-009 need no text changes: their production laws (five-valued epistemic `may()`, refusal prefixes) become normative in SPEC-001 via AMEND-01, which resolves the drift at its root.
 
 > **Repository note (hanuele/hive):** this repo's `qm-hsm-mcp/` already contains working Phase-1
@@ -42,6 +42,7 @@
 | C1 missing `(:Plan)` write lock in SPEC-001 §2.3 / SPEC-002 §3 | AMEND-01 §2.3, AMEND-02 |
 | C2 unlabeled `MATCH (target {id})` | AMEND-01 §2.1 (`:ActiveObject`), AMEND-03 §3 |
 | D missing Phase-1 reference code + fixtures | AMEND-08 (SPEC-001B) |
+| E1–E7 operational gaps (loopback auth, idempotency, telemetry staleness, crash recovery, `ask` workflow, lineage hardening, tests) — new in rev 2 | AMEND-09 |
 
 ---
 
@@ -1516,6 +1517,63 @@ rules:
 
 ---
 
+## AMEND-09 — Operational hardening (new findings E1–E7, rev 2)
+
+These are gaps in the operational glue rather than the architecture. Each was verified against the `qm-hsm-mcp` sources: no auth/token handling in `src/mcp/server.ts`, no `observedAt`/staleness on telemetry, no idempotency anywhere in `src/`, `verifyTemporalLineageIntegrity` exposed only as a manual tool (`src/mcp/server.ts:280`), and the orchestrator still boolean-only (`src/mcp/orchestrator.ts`).
+
+### AMEND-09.1 — E1: authentication on the loopback MCP surface (amends SPEC-001 §5.2, SPEC-003 §1)
+
+`127.0.0.1:4110` currently trusts a caller-supplied `sessionId`, so any local process can impersonate `@coder-01`. Amend:
+
+- Every `(:AgentSession)` receives a **session token** at SessionStart, TOFU-bound to `CLAUDE_CODE_SESSION_ID` (per SPEC-008 BUS-PROTOCOL). Tokens live server-side only — never in the graph, never in logs.
+- All HTTP calls to `127.0.0.1:4110` — including `hooks/pre-commit` `POST /mcp/may` — must present `Authorization: Bearer <token>`. Missing/invalid token → HTTP 401, no `may()` evaluation. The stdio transport authenticates by process ownership instead.
+- The pre-commit hook (AMEND-01.4) reads the token from `AGENT_SESSION_TOKEN` (written at session start) and sends the header.
+- Loopback-only binding stays mandatory; the surface must never be exposed publicly.
+
+### AMEND-09.2 — E2: idempotency of mutating verbs
+
+A retried HTTP call must not create a second transition. Amend SPEC-001 §6 / SPEC-003 §3:
+
+- Every mutating MCP verb (`hsm.dispatch`, `plan.decompose_wave`, `task.sync_state`, `comms.post`, `steward.audit_gate`) accepts an optional `idempotencyKey`, stored on the `(:TemporalEvent)`.
+- Inside the locked transaction (AMEND-01.2): if an event with the same `(planId, sessionId, mcpVerb, idempotencyKey)` already exists, return that event and mutate nothing.
+- The pre-commit hook derives the key as `sha256(sessionId | itemId | HEAD | commit-msg)` and caches it under `.git/` so a curl retry reuses it.
+
+### AMEND-09.3 — E3: telemetry freshness for Gate C (amends AMEND-03.3)
+
+The specs' own UNKNOWN law must apply to their telemetry: a stale green is not a green.
+
+- Each Gate C telemetry property (`cleanWorktree`, `ciGreen`, `testCoveragePct`, `openBlockersCount`, …) carries `observedAt: DATETIME` on the node.
+- The YAML lattice gains per-field `telemetry_max_age_seconds` (defaults: `cleanWorktree`/`ciGreen` = 300s, `testCoveragePct`/`openBlockersCount` = 3600s).
+- Gate C treats `now - observedAt > max_age` exactly like unobserved → `decision: "ask"`, with the field listed in `unobserved[]` and reason `stale`.
+
+### AMEND-09.4 — E4: crash recovery & rehydration
+
+The graph is the source of truth; in-memory HSM state is a cache.
+
+- `hsm.dispatch` ordering: compute LCA → `may()` → Neo4j ACID commit → **only then** update the in-memory `hsmStatePath` from the recorded event. On transaction failure the in-memory state is untouched (no divergence).
+- On startup, rehydrate by replaying `(p)-[:HEAD_EVENT]->(e)-[:PREV_EVENT*]->…` oldest→newest, applying each event's `MUTATED_TARGET`/`toState` — the same replay `lineage.scrub` uses (AMEND-06.2).
+- Every steward pulse runs a reconcile job: memory-vs-graph head mismatch is logged and recorded as a `TemporalEvent` with `mcpVerb: "reconcile"`, followed by rehydration.
+
+### AMEND-09.5 — E5: the `ask` decision needs a consumer (amends AMEND-01.3)
+
+- A `decision: "ask"` posts a `(:CommsMessage)` on the item's channel with `attachedSignal: "SIG_ESCALATE_ASK"` and notifies the steward session.
+- The steward resolves the question via `/interview` (SPEC-009 §3); the ruling is appended as a `(:TemporalEvent)` with `mcpVerb: "ruling.record"` so later `may()` calls cite it in `rulingId`.
+- TTL: after `ask_ttl_seconds` (YAML, default 900) without a ruling, that `(itemId, intent)` ask hardens to `"no"` until telemetry changes.
+
+### AMEND-09.6 — E6: lineage hardening (amends AMEND-03.2, SPEC-001 §3)
+
+- `(:TemporalEvent)` gains `qmAstHash` (SHA-256 of the `.qm` file loaded at dispatch time), and `qmAstHash` joins the chain-hash payload — otherwise a hot-reloaded statechart makes historical transitions unattributable.
+- Hot reload of `.qm` files is permitted only after the SPEC-004 §4 LINT suite and `rules.compile_check` pass; the swap is atomic and recorded as a `TemporalEvent` with `mcpVerb: "hsm.model_reload"`.
+- `verifyTemporalLineageIntegrity` runs on **every steward pulse**, not only at stage gates; a broken chain dispatches `SIG_TOLERANCE_BREACH` to the current `StageGate`.
+
+### AMEND-09.7 — E7: operational tests
+
+- Integration test against real Neo4j (testcontainers): two sessions concurrently `hsm.dispatch` on the same plan; assert the `[:PREV_EVENT]` chain stays linear (single head, no forks) — this proves the C1 write-lock fix for real.
+- Property-based tests for `compileMonotonicYamlChain`: any generated child tier that relaxes a bound must throw `MonotonicityViolationError`.
+- Idempotency test: the same `idempotencyKey` dispatched twice yields exactly one `(:TemporalEvent)`.
+
+---
+
 ## Closing note
 
-Applying AMEND-01 … AMEND-08 resolves every finding in the review (A1–A9, B1–B6, C1–C3, D) at the normative level (SPEC-001/003) and in the reference code, while keeping `allow: boolean` backward compatibility so the existing git hook contract and test assertions keep working. SPEC-008/SPEC-009 require no edits: their production laws are adopted by reference in AMEND-01.3.
+Applying AMEND-01 … AMEND-09 resolves every finding in the review (A1–A9, B1–B6, C1–C3, D) plus the operational gaps (E1–E7) at the normative level (SPEC-001/003) and in the reference code, while keeping `allow: boolean` backward compatibility so the existing git hook contract and test assertions keep working. SPEC-008/SPEC-009 require no edits: their production laws are adopted by reference in AMEND-01.3.
