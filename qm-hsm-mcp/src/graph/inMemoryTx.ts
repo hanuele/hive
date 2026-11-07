@@ -5,8 +5,9 @@ import {
 
 /**
  * In-memory GraphTransactionRunner used for local demos and Vitest.
- * Mirrors the two Cypher statements issued by `appendConservedTemporalMutation`:
- * the HEAD_EVENT lock/read and the atomic mutation + chained event append.
+ * Mirrors the Cypher statements issued by `appendConservedTemporalMutation`:
+ * the idempotency dedup read, the HEAD_EVENT lock/read, and the atomic
+ * mutation + chained event append.
  */
 export class InMemoryNeo4jTx implements GraphTransactionRunner {
   public headHash: string = "GENESIS_0000000000000000";
@@ -14,6 +15,16 @@ export class InMemoryNeo4jTx implements GraphTransactionRunner {
   public itemStates = new Map<string, string>();
 
   async run(cypher: string, params: Record<string, any>): Promise<{ records: any[] }> {
+    // E2: idempotency dedup read — RETURN e (never the CREATE statement)
+    if (cypher.includes("idempotencyKey: $idempotencyKey") && cypher.includes("RETURN e") && !cypher.includes("CREATE")) {
+      const found = this.events.find(
+        (e) =>
+          e.planId === params.planId &&
+          e.mcpVerb === params.mcpVerb &&
+          e.idempotencyKey === params.idempotencyKey
+      );
+      return { records: [{ get: (key: string) => (key === "e" ? found ?? null : null) }] };
+    }
     if (cypher.includes("RETURN headEvt.id AS prevEventId")) {
       return {
         records: [
@@ -39,6 +50,9 @@ export class InMemoryNeo4jTx implements GraphTransactionRunner {
         entryExitTrace: params.entryExitTrace,
         prevHash: params.prevHash,
         chainHash: params.chainHash,
+        idempotencyKey: params.idempotencyKey ?? null,
+        qmAstHash: params.qmAstHash ?? null,
+        origin: params.origin ?? "TRUNK",
       };
       this.events.push(evt);
       this.headHash = params.chainHash;

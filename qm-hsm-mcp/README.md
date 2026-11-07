@@ -56,7 +56,10 @@ Tools: `may`, `hsm.dispatch`, `plan.decompose_wave`, `task.sync_state`, `comms.p
 `rules.compile_check`, `steward.audit_gate`, `md.project`, `lineage.verify`.
 
 HTTP: `POST http://127.0.0.1:4110/mcp/<tool>` with `{"params": {...}}`;
-`POST /mcp/may` returns the raw decision (`{"allow": ...}`) for `hooks/pre-commit`.
+`POST /mcp/may` returns the raw decision (`{"allow": ..., "decision": ...}`) for
+`hooks/pre-commit`. When `MCP_AUTH_TOKEN` is set, all `POST /mcp/*` require
+`Authorization: Bearer $MCP_AUTH_TOKEN` (the hook sends `$AGENT_SESSION_TOKEN`);
+mutating tools accept an optional `idempotencyKey` (retry-safe).
 Binding is loopback-only; do not expose publicly.
 
 With a live Neo4j, inject a `GraphTransactionRunner` backed by
