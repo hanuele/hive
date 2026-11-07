@@ -1,19 +1,37 @@
 #!/usr/bin/env bash
-# SPEC-001 §5.2: Universal may() pre-flight for git commits.
+# SPEC-001 §5.2 (AMEND-01.4 + AMEND-09.1/09.2): Universal may() pre-flight for git commits.
 # Install into each agent worktree: cp hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 set -euo pipefail
 
 SESSION_ID="${AGENT_SESSION_ID:-$(git config user.session || echo '@unknown')}"
 ITEM_ID="${ACTIVE_PLAN_ITEM_ID:-$(git rev-parse --abbrev-ref HEAD | cut -d'/' -f2)}"
 
+# E2 (AMEND-09.2): stable idempotency key for this commit attempt — a curl retry
+# with the same HEAD + commit message reuses the key and gets the original event.
+IDEMPOTENCY_KEY=$(printf '%s|%s|%s|%s' \
+  "$SESSION_ID" "$ITEM_ID" \
+  "$(git rev-parse HEAD 2>/dev/null || echo none)" \
+  "$(git log -1 --pretty=%B 2>/dev/null || echo nomsg)" | sha256sum | cut -d' ' -f1)
+
+# E1 (AMEND-09.1): present the session token when the server requires one.
+AUTH_ARGS=()
+if [ -n "${AGENT_SESSION_TOKEN:-}" ]; then
+  AUTH_ARGS=(-H "Authorization: Bearer ${AGENT_SESSION_TOKEN}")
+fi
+
 RESPONSE=$(curl -s -X POST http://127.0.0.1:4110/mcp/may \
   -H "Content-Type: application/json" \
-  -d "{\"sessionId\":\"$SESSION_ID\",\"itemId\":\"$ITEM_ID\",\"intent\":\"git.commit\"}")
+  ${AUTH_ARGS[@]+"${AUTH_ARGS[@]}"} \
+  -d "{\"sessionId\":\"$SESSION_ID\",\"itemId\":\"$ITEM_ID\",\"intent\":\"git.commit\",\"idempotencyKey\":\"$IDEMPOTENCY_KEY\"}")
 
 ALLOW=$(echo "$RESPONSE" | jq -r '.allow')
+DECISION=$(echo "$RESPONSE" | jq -r '.decision // "no"')
 if [ "$ALLOW" != "true" ]; then
-  echo "❌ [QM-HSM may() DENIED git.commit on $ITEM_ID for $SESSION_ID]"
+  echo "❌ [QM-HSM may() decision=$DECISION git.commit on $ITEM_ID for $SESSION_ID]"
   echo "$RESPONSE" | jq -r '.denyReason // .gates'
+  if [ "$DECISION" = "ask" ]; then
+    echo "⚠️  Unobserved/stale telemetry: $(echo "$RESPONSE" | jq -r '.unobserved | join(", ")') — escalated to steward, not denied."
+  fi
   exit 1
 fi
 exit 0

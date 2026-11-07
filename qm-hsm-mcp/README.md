@@ -50,13 +50,27 @@ npm run sim       # regenerate simulator/index.html from models/ + rules/
 # plus a "Concepts explained" tab
 MCP_PORT=4110 bun src/mcp/server.ts        # loopback HTTP gatekeeper (demo, in-memory lineage)
 MCP_STDIO=1 MCP_PORT=4110 bun src/mcp/server.ts  # + stdio MCP transport
+# MCP_AUTH_TOKEN=<token>  -> all POST /mcp/* require Authorization: Bearer <token>
+# STEWARD_PULSE_SECONDS=900 (default; 0 disables) -> per-pulse lineage.verify + reconcile
+# QM_PLAN_ID=PLAN-CORE-2026 -> plan the steward pulse reconciles
 ```
 
-Tools: `may`, `hsm.dispatch`, `plan.decompose_wave`, `task.sync_state`, `comms.post`,
-`rules.compile_check`, `steward.audit_gate`, `md.project`, `lineage.verify`.
+E7 race test against real Neo4j (skipped unless configured):
+`QM_TEST_NEO4J_URI=bolt://127.0.0.1:7687 npm i -D neo4j-driver && QM_TEST_NEO4J_URI=... npm test`
+
+Tools: `may` (five-valued decision; `ask` posts `SIG_ESCALATE_ASK` once per item|intent and
+hardens to `no` after `ask_ttl_seconds`), `hsm.dispatch`, `plan.decompose_wave`,
+`task.sync_state`, `comms.post`, `rules.compile_check`, `steward.audit_gate`, `md.project`,
+`lineage.verify`, `lineage.reconcile` (E4 rehydration check, run per steward pulse),
+`ruling.record` (E5: steward-only, chained `ruling.record` event citable via `rulingId`).
+Gate C telemetry accepts `telemetryObservedAt` per field; stale (per
+`telemetry_max_age_seconds`) counts as unobserved => `ask`.
 
 HTTP: `POST http://127.0.0.1:4110/mcp/<tool>` with `{"params": {...}}`;
-`POST /mcp/may` returns the raw decision (`{"allow": ...}`) for `hooks/pre-commit`.
+`POST /mcp/may` returns the raw decision (`{"allow": ..., "decision": ...}`) for
+`hooks/pre-commit`. When `MCP_AUTH_TOKEN` is set, all `POST /mcp/*` require
+`Authorization: Bearer $MCP_AUTH_TOKEN` (the hook sends `$AGENT_SESSION_TOKEN`);
+mutating tools accept an optional `idempotencyKey` (retry-safe).
 Binding is loopback-only; do not expose publicly.
 
 With a live Neo4j, inject a `GraphTransactionRunner` backed by

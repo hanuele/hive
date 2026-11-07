@@ -11,6 +11,7 @@ state_capabilities:
     allowed_intents:
       comms.post: ["IMPL", "REVIEW", "QA", "STEWARD", "PM"]
       item.read: ["IMPL", "REVIEW", "QA", "STEWARD", "PM"]
+      ruling.record: ["STEWARD"]   # E5 (AMEND-09.5): only the steward records rulings
   "/top/HorizonWave":
     allowed_intents:
       item.edit_spec: ["STEWARD", "PM"]
@@ -47,6 +48,14 @@ guards:
   min_pr_approvals: 1
   max_open_blockers: 0
   max_token_burn: 50000
+  # E5 (AMEND-09.5): unanswered "ask" hardens to "no" after this TTL
+  ask_ttl_seconds: 900
+  # E3 (AMEND-09.3): per-field telemetry staleness bounds; stale == unobserved => ask
+  telemetry_max_age_seconds:
+    cleanWorktree: 300
+    ciGreen: 300
+    testCoveragePct: 3600
+    openBlockersCount: 3600
   required_predicates:
     - "require_clean_worktree"
     - "require_neo4j_lineage"
@@ -75,6 +84,9 @@ guards:
   min_pr_approvals: 1             # UNCHANGED: 1
   max_open_blockers: 0            # UNCHANGED: 0
   max_token_burn: 40000           # TIGHTENED: 50,000 -> 40,000
+  # E3: TIGHTENED staleness bound — CI green older than 60s is stale in Stage 2
+  telemetry_max_age_seconds:
+    ciGreen: 60
   required_predicates:
     - "require_clean_worktree"
     - "require_neo4j_lineage"
@@ -100,6 +112,7 @@ guards:
   min_pr_approvals: 2             # TIGHTENED: 1 -> 2
   max_open_blockers: 0
   max_token_burn: 35000           # TIGHTENED: 40,000 -> 35,000
+  ask_ttl_seconds: 600            # E5: TIGHTENED — asks on L2.2 harden after 10 min
   required_predicates:
     - "require_clean_worktree"
     - "require_neo4j_lineage"

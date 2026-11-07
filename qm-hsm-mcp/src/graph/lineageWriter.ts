@@ -10,12 +10,16 @@ export interface TemporalMutationInput {
     | "plan.decompose_wave"
     | "task.sync_state"
     | "comms.post"
-    | "steward.audit_gate";
+    | "steward.audit_gate"
+    | "ruling.record"
+    | "reconcile";
   signal: string;
   fromState: string;
   toState: string;
   lcaState: string;
   entryExitTrace: string[];
+  idempotencyKey?: string; // E2 (AMEND-09.2): deduped inside the locked transaction
+  qmAstHash?: string;      // E6 (AMEND-09.6): SHA-256 of the loaded .qm model at dispatch time
   telemetryUpdates?: {
     testCoveragePct?: number;
     openBlockersCount?: number;
@@ -38,23 +42,48 @@ export interface RecordedTemporalEvent {
   entryExitTrace: string[];
   prevHash: string;
   chainHash: string;
+  idempotencyKey?: string | null;
+  qmAstHash?: string | null;
+  origin?: string;
 }
 
 /**
  * Abstraction over Neo4j ManagedTransaction (compatible with neo4j-driver v5
  * and in-memory test doubles for Vitest).
+ *
+ * `withLock` (optional): serializes a whole multi-query mutation per key.
+ * Real Neo4j gets this from `SET p._writeLock = ...` held until commit;
+ * in-memory runners must emulate it with a mutex so concurrent writers
+ * cannot interleave between the HEAD_EVENT read and the append (E7/C1).
  */
 export interface GraphTransactionRunner {
   run(cypher: string, params: Record<string, any>): Promise<{ records: any[] }>;
+  withLock?<T>(key: string, fn: () => Promise<T>): Promise<T>;
 }
 
+/** RFC 9562 UUIDv7 (time-sortable): 48-bit ms timestamp + ver/variant + 62 random bits. */
+export function uuidv7(): string {
+  const b = crypto.randomBytes(16);
+  b.writeUIntBE(Date.now(), 0, 6);
+  b[6] = (b[6] & 0x0f) | 0x70; // version 7
+  b[8] = (b[8] & 0x3f) | 0x80; // variant 10
+  const hex = b.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+/**
+ * SHA-256 chain hash. AMEND-03.2 (B6): `timestampIso` is part of the payload so
+ * timestamp tampering is detected; `qmAstHash`/`idempotencyKey` (E6/E2) are
+ * included when present.
+ */
 export function computeTemporalChainHash(
   prevHash: string,
-  payload: Omit<RecordedTemporalEvent, "chainHash" | "prevHash" | "timestampIso">
+  payload: Omit<RecordedTemporalEvent, "chainHash" | "prevHash">
 ): string {
   const canonical = [
     prevHash,
     payload.eventId,
+    payload.timestampIso,
     payload.planId,
     payload.sessionId,
     payload.targetId,
@@ -64,20 +93,60 @@ export function computeTemporalChainHash(
     payload.toState,
     payload.lcaState,
     payload.entryExitTrace.join("|"),
+    payload.qmAstHash ?? "",
+    payload.idempotencyKey ?? "",
   ].join("::");
 
   return crypto.createHash("sha256").update(canonical, "utf8").digest("hex");
 }
 
+/** Normalize a TemporalEvent returned as a Neo4j node (`properties`) or a plain object (in-memory). */
+function normalizeEvent(e: any): RecordedTemporalEvent {
+  const p = e && e.properties ? e.properties : e;
+  return {
+    eventId: p.eventId ?? p.id,
+    timestampIso: p.timestampIso ?? (p.timestamp ? String(p.timestamp) : new Date(0).toISOString()),
+    planId: p.planId,
+    sessionId: p.sessionId,
+    targetId: p.targetId,
+    mcpVerb: p.mcpVerb,
+    signal: p.signal,
+    fromState: p.fromState,
+    toState: p.toState,
+    lcaState: p.lcaState,
+    entryExitTrace: p.entryExitTrace ?? [],
+    prevHash: p.prevHash,
+    chainHash: p.chainHash,
+    idempotencyKey: p.idempotencyKey ?? null,
+    qmAstHash: p.qmAstHash ?? null,
+    origin: p.origin ?? "TRUNK",
+  };
+}
+
 /**
  * Atomically mutates the target Active Object's HSM state in Neo4j AND appends
  * a cryptographically chained (:TemporalEvent) node to the Plan's [:HEAD_EVENT] list.
+ * The `(:Plan)` write lock (C1) serializes concurrent writers so the
+ * [:PREV_EVENT] chain can never fork; the labeled `:ActiveObject` match (C2)
+ * uses the ao_id_unique constraint instead of an AllNodesScan.
+ * E2: when `idempotencyKey` is given and an event with the same
+ * (planId, mcpVerb, idempotencyKey) already exists, it is returned unchanged.
  */
 export async function appendConservedTemporalMutation(
   tx: GraphTransactionRunner,
   input: TemporalMutationInput
 ): Promise<RecordedTemporalEvent> {
-  const eventId = `EVT-${crypto.randomUUID()}`;
+  // The whole read-head -> dedup -> mutate-append sequence runs under the
+  // plan lock: Cypher `SET p._writeLock` on real Neo4j, withLock() on mocks.
+  const runAll = () => appendLocked(tx, input);
+  return tx.withLock ? tx.withLock(`plan:${input.planId}`, runAll) : runAll();
+}
+
+async function appendLocked(
+  tx: GraphTransactionRunner,
+  input: TemporalMutationInput
+): Promise<RecordedTemporalEvent> {
+  const eventId = `EVT-${uuidv7()}`;
   const timestampIso = new Date().toISOString();
 
   // Step 1: Acquire write lock on (:Plan) and fetch current HEAD_EVENT hash
@@ -97,10 +166,29 @@ export async function appendConservedTemporalMutation(
     throw new Error(`Plan '${input.planId}' not found in Neo4j`);
   }
 
+  // Step 1b (E2): idempotency dedup inside the same locked transaction
+  if (input.idempotencyKey) {
+    const dedupQuery = `
+      MATCH (p:Plan {id: $planId})
+      OPTIONAL MATCH (e:TemporalEvent {planId: $planId, mcpVerb: $mcpVerb, idempotencyKey: $idempotencyKey})
+      RETURN e
+    `;
+    const dedupRes = await tx.run(dedupQuery, {
+      planId: input.planId,
+      mcpVerb: input.mcpVerb,
+      idempotencyKey: input.idempotencyKey,
+    });
+    const existing = dedupRes.records[0]?.get("e");
+    if (existing) {
+      return normalizeEvent(existing);
+    }
+  }
+
   const prevHash: string = headRes.records[0].get("prevHash");
 
   const chainHash = computeTemporalChainHash(prevHash, {
     eventId,
+    timestampIso,
     planId: input.planId,
     sessionId: input.sessionId,
     targetId: input.targetId,
@@ -110,13 +198,15 @@ export async function appendConservedTemporalMutation(
     toState: input.toState,
     lcaState: input.lcaState,
     entryExitTrace: input.entryExitTrace,
+    qmAstHash: input.qmAstHash ?? null,
+    idempotencyKey: input.idempotencyKey ?? null,
   });
 
   // Step 2: Mutate Target Node & Append Chained (:TemporalEvent) Atomically
   const mutationCypher = `
     MATCH (p:Plan {id: $planId})
     MATCH (s:AgentSession {id: $sessionId})
-    MATCH (target {id: $targetId})
+    MATCH (target:ActiveObject {id: $targetId})
     OPTIONAL MATCH (p)-[oldHeadRel:HEAD_EVENT]->(prevEvt:TemporalEvent)
 
     SET target.hsmStatePath = $toState,
@@ -136,7 +226,10 @@ export async function appendConservedTemporalMutation(
       lcaState: $lcaState,
       entryExitTrace: $entryExitTrace,
       prevHash: $prevHash,
-      chainHash: $chainHash
+      chainHash: $chainHash,
+      idempotencyKey: $idempotencyKey,
+      qmAstHash: $qmAstHash,
+      origin: "TRUNK"
     })
 
     DELETE oldHeadRel
@@ -163,6 +256,8 @@ export async function appendConservedTemporalMutation(
     entryExitTrace: input.entryExitTrace,
     prevHash,
     chainHash,
+    idempotencyKey: input.idempotencyKey ?? null,
+    qmAstHash: input.qmAstHash ?? null,
     testCoveragePct: input.telemetryUpdates?.testCoveragePct ?? null,
     openBlockersCount: input.telemetryUpdates?.openBlockersCount ?? null,
     cleanWorktree: input.telemetryUpdates?.cleanWorktree ?? null,
@@ -183,7 +278,26 @@ export async function appendConservedTemporalMutation(
     entryExitTrace: input.entryExitTrace,
     prevHash,
     chainHash,
+    idempotencyKey: input.idempotencyKey ?? null,
+    qmAstHash: input.qmAstHash ?? null,
+    origin: "TRUNK",
   };
+}
+
+/**
+ * E4 (AMEND-09.4): rebuild in-memory HSM state by replaying the conserved
+ * lineage oldest -> newest. The graph is the source of truth; memory is a cache.
+ */
+export function rehydrateItemStates(
+  eventsOldestFirst: RecordedTemporalEvent[]
+): Map<string, string> {
+  const states = new Map<string, string>();
+  for (const evt of eventsOldestFirst) {
+    if (evt.origin !== "COUNTERFACTUAL" && evt.mcpVerb !== "reconcile") {
+      states.set(evt.targetId, evt.toState);
+    }
+  }
+  return states;
 }
 
 /**
@@ -203,18 +317,7 @@ export function verifyTemporalLineageIntegrity(
         reason: `Broken prevHash link: expected '${expectedPrevHash}', found '${evt.prevHash}'`,
       };
     }
-    const recomputed = computeTemporalChainHash(evt.prevHash, {
-      eventId: evt.eventId,
-      planId: evt.planId,
-      sessionId: evt.sessionId,
-      targetId: evt.targetId,
-      mcpVerb: evt.mcpVerb,
-      signal: evt.signal,
-      fromState: evt.fromState,
-      toState: evt.toState,
-      lcaState: evt.lcaState,
-      entryExitTrace: evt.entryExitTrace,
-    });
+    const recomputed = computeTemporalChainHash(evt.prevHash, evt);
     if (recomputed !== evt.chainHash) {
       return {
         valid: false,
